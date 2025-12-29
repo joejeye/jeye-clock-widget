@@ -9,3 +9,4 @@ services:
       - ./backend/database.db:/app/database.db
     env_file:
       - backend/.env
+    restart: unless-stopped
