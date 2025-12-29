@@ -57,3 +57,31 @@ The application is containerized using Docker and orchestrated with Docker Compo
 *   **Dependencies:**
     *   Backend dependencies are defined in `backend/pyproject.toml`.
     *   Managed by `uv`.
+
+# Troubleshooting
+
+## Common Issues
+
+### Database Error: `sqlite3.OperationalError: unable to open database file`
+
+**Symptoms:**
+*   Container fails to start or exits immediately.
+*   Logs show `sqlite3.OperationalError: unable to open database file`.
+*   `backend/database.db` exists as a directory instead of a file.
+
+**Cause:**
+Docker Compose may create a directory for the volume mount if the source file does not exist on the host machine before the container starts.
+
+**Solution:**
+1.  Remove the directory:
+    ```bash
+    rm -rf backend/database.db
+    ```
+2.  Create an empty file:
+    ```bash
+    touch backend/database.db
+    ```
+3.  Restart the container:
+    ```bash
+    docker-compose up -d --force-recreate
+    ```
