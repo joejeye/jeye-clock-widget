@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Local Time</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="https://img.icons8.com/fluency/48/clock--v1.png">
+    <style>
+        /* Custom styles to apply the Inter font */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Custom style for the digital clock font effect */
+        .digital-font {
+            font-weight: 900;
+            /* Black weight for a bold look */
+            letter-spacing: 0.05em;
+            /* A little extra spacing */
+        }
+
+        /* Todo list styles */
+        .todo-item {
+            transition: all 0.3s ease;
+        }
+
+        .todo-item.completed {
+            opacity: 0.6;
+        }
+
+        .todo-item.completed .todo-text {
+            text-decoration: line-through;
+        }
+
+        .todo-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+        }
+    </style>
+</head>
+
+<body class="bg-gray-900 text-white min-h-full antialiased">
+
+    <div class="container mx-auto px-4 py-8">
+        <!-- Main layout with grid for clock and todo list -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 min-h-screen items-center">
+
+            <!-- Clock Section -->
+            <div class="text-center">
+                <!-- Main container for the clock. Starts invisible and fades in via JS. -->
+                <div id="clock-container" class="transition-opacity duration-500 ease-in opacity-0">
+                    <div class="mb-6">
+                        <button id="toggle-weather-btn"
+                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 font-medium">
+                            Toggle Weather
+                        </button>
+                    </div>
+                    <!-- Date Display -->
+                    <div id="date-display" class="text-2xl md:text-4xl text-gray-400 mb-2">
+                        <!-- Date will be injected here by JavaScript -->
+                    </div>
+
+                    <!-- Time Display -->
+                    <div id="time-display"
+                        class="digital-font text-6xl md:text-8xl lg:text-9xl bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-teal-300">
+                        <!-- Time will be injected here by JavaScript -->
+                    </div>
+
+                    <!-- Weather Information Display -->
+                    <div id="weather-info" class="text-2xl md:text-4xl text-gray-400 mb-2">
+                    </div>
+
+
+                </div>
+            </div>
+
+            <!-- Todo List Section -->
+            <div class="bg-gray-800 rounded-lg p-6 shadow-lg">
+                <div class="flex items-center justify-center mb-6">
+                    <h2
+                        class="text-2xl font-bold text-center bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-300">
+                        Todo List
+                    </h2>
+
+                </div>
+
+                <!-- Add new todo input -->
+                <div class="mb-6">
+                    <div class="flex space-x-2">
+                        <input type="text" id="todo-input" placeholder="Add a new task..."
+                            class="todo-input flex-1 px-4 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-blue-500"
+                            maxlength="100">
+                        <button id="add-todo-btn"
+                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 font-medium">
+                            Add
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Todo items container -->
+                <div id="todo-list" class="space-y-2 max-h-96 overflow-y-auto">
+                    <!-- Todo items will be dynamically added here -->
+                </div>
+
+                <!-- Empty state message -->
+                <div id="empty-state" class="text-center text-gray-400 py-8 hidden">
+                    <svg class="mx-auto h-12 w-12 text-gray-500 mb-3" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
+                        </path>
+                    </svg>
+                    <p>No tasks yet. Add one above!</p>
+                </div>
+
+                <!-- Todo stats -->
+                <div id="todo-stats"
+                    class="mt-6 pt-4 border-t border-gray-700 text-sm text-gray-400 text-center hidden">
+                    <span id="completed-count">0</span> completed, <span id="total-count">0</span> total
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="clock.js"></script>
+    <script src="updateFeatures.js"></script>
+    <script src="todo.js"></script>
+
+
+
+
+</body>
+
+</html>

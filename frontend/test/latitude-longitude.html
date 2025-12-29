@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+    <head>
+    <meta charset="UTF-8">
+    <title>Latitude and Longitude</title>  
+    </head>
+    <body>
+        <div id="coordinates"></div>
+    </body>
+    <script>
+        function displayCoordinates() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(showPosition, showError);
+            } else {
+                document.getElementById("coordinates").innerHTML = "Geolocation is not supported by this browser.";
+            }
+        }
+
+        function showPosition(position) {
+            const latitude = position.coords.latitude;
+            const longitude = position.coords.longitude;
+            document.getElementById("coordinates").innerHTML = 
+                "Latitude: " + latitude.toFixed(6) + "<br>Longitude: " + longitude.toFixed(6);
+        }
+
+        function showError(error) {
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    document.getElementById("coordinates").innerHTML = "User denied the request for Geolocation."
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    document.getElementById("coordinates").innerHTML = "Location information is unavailable."
+                    break;
+                case error.TIMEOUT:
+                    document.getElementById("coordinates").innerHTML = "The request to get user location timed out."
+                    break;
+                case error.UNKNOWN_ERROR:
+                    document.getElementById("coordinates").innerHTML = "An unknown error occurred."
+                    break;
+            }
+        }
+
+        // Call the function to display coordinates when the page loads
+        window.onload = displayCoordinates;
+    </script>
+</html>

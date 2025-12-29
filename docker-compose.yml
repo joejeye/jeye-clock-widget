@@ -1,0 +1,11 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "19563:19563"
+    volumes:
+      - ./backend/database.db:/app/database.db
+    env_file:
+      - backend/.env
