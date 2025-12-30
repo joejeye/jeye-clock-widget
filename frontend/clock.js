@@ -96,8 +96,24 @@ function renderCalendar(date) {
         dayDiv.textContent = i;
         dayDiv.classList.add('text-sm', 'py-1', 'rounded', 'hover:bg-gray-700', 'cursor-pointer');
         
+        const currentDate = new Date(year, month, i);
+
+        // Check for tasks on this day
+        let hasTask = false;
+        if (typeof todoApp !== 'undefined' && todoApp.todos) {
+            hasTask = todoApp.todos.some(todo => {
+                if (!todo.archived && todo.meta_data && typeof todo.meta_data.dueTime === 'number') {
+                    const dueDate = new Date(todo.meta_data.dueTime * 1000);
+                    return dueDate.toDateString() === currentDate.toDateString();
+                }
+                return false;
+            });
+        }
+
         if (isCurrentMonth && i === today.getDate()) {
             dayDiv.classList.add('bg-blue-600', 'text-white', 'font-bold');
+        } else if (hasTask) {
+             dayDiv.classList.add('text-orange-500', 'font-bold');
         } else {
             dayDiv.classList.add('text-gray-300');
         }
