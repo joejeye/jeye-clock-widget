@@ -120,6 +120,13 @@ toggleWeatherBtn.addEventListener('click', () => {
     getWeather();
 });
 
+const weatherInfo = document.getElementById('weather-info');
+weatherInfo.addEventListener('click', () => {
+    if (showWeather) {
+        window.open('https://www.theweathernetwork.com/en', '_blank');
+    }
+});
+
 function updateFeatures() {
     getWeather();
 }
