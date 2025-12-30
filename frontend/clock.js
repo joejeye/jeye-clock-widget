@@ -47,3 +47,109 @@ updateClock();
 
 // Set an interval to update the clock every second (1000 milliseconds)
 setInterval(updateClock, 1000);
+
+// --- Calendar Functionality ---
+
+const calendarModal = document.getElementById('calendar-modal');
+const closeCalendarBtn = document.getElementById('close-calendar');
+const prevMonthBtn = document.getElementById('prev-month');
+const nextMonthBtn = document.getElementById('next-month');
+const calendarMonthYear = document.getElementById('calendar-month-year');
+const calendarDays = document.getElementById('calendar-days');
+
+let currentCalendarDate = new Date();
+
+function renderCalendar(date) {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+
+    // Set month and year in header
+    const monthName = new Intl.DateTimeFormat('en-US', { month: 'long' }).format(date);
+    calendarMonthYear.textContent = `${monthName} ${year}`;
+
+    // Clear previous days
+    calendarDays.innerHTML = '';
+
+    // Get first day of the month
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    
+    // Days in month
+    const daysInMonth = lastDay.getDate();
+    
+    // Day of week of the first day (0-6, Sun-Sat)
+    const startingDay = firstDay.getDay();
+
+    // Today's date for highlighting
+    const today = new Date();
+    const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
+
+    // Add empty slots for days before the first day
+    for (let i = 0; i < startingDay; i++) {
+        const emptyDiv = document.createElement('div');
+        calendarDays.appendChild(emptyDiv);
+    }
+
+    // Add days
+    for (let i = 1; i <= daysInMonth; i++) {
+        const dayDiv = document.createElement('div');
+        dayDiv.textContent = i;
+        dayDiv.classList.add('text-sm', 'py-1', 'rounded', 'hover:bg-gray-700', 'cursor-pointer');
+        
+        if (isCurrentMonth && i === today.getDate()) {
+            dayDiv.classList.add('bg-blue-600', 'text-white', 'font-bold');
+        } else {
+            dayDiv.classList.add('text-gray-300');
+        }
+
+        // Add click handler to filter todos
+        dayDiv.addEventListener('click', () => {
+             const clickedDate = new Date(year, month, i);
+             if (typeof todoApp !== 'undefined' && todoApp.filterByDate) {
+                 todoApp.filterByDate(clickedDate);
+             }
+             closeCalendar();
+        });
+
+        calendarDays.appendChild(dayDiv);
+    }
+}
+
+function openCalendar() {
+    currentCalendarDate = new Date(); // Reset to current date when opening
+    renderCalendar(currentCalendarDate);
+    calendarModal.classList.remove('hidden');
+}
+
+function closeCalendar() {
+    calendarModal.classList.add('hidden');
+}
+
+// Event Listeners
+if (timeDisplay) timeDisplay.addEventListener('click', openCalendar);
+if (dateDisplay) dateDisplay.addEventListener('click', openCalendar);
+if (closeCalendarBtn) closeCalendarBtn.addEventListener('click', closeCalendar);
+
+// Close on click outside
+if (calendarModal) {
+    calendarModal.addEventListener('click', (e) => {
+        if (e.target === calendarModal) {
+            closeCalendar();
+        }
+    });
+}
+
+if (prevMonthBtn) {
+    prevMonthBtn.addEventListener('click', () => {
+        currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1);
+        renderCalendar(currentCalendarDate);
+    });
+}
+
+if (nextMonthBtn) {
+    nextMonthBtn.addEventListener('click', () => {
+        currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1);
+        renderCalendar(currentCalendarDate);
+    });
+}
+
