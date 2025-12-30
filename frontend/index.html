@@ -63,13 +63,13 @@
                         </button>
                     </div>
                     <!-- Date Display -->
-                    <div id="date-display" class="text-2xl md:text-4xl text-gray-400 mb-2">
+                    <div id="date-display" class="text-2xl md:text-4xl text-gray-400 mb-2 cursor-pointer hover:text-gray-200 transition-colors">
                         <!-- Date will be injected here by JavaScript -->
                     </div>
 
                     <!-- Time Display -->
                     <div id="time-display"
-                        class="digital-font text-6xl md:text-8xl lg:text-9xl bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-teal-300">
+                        class="digital-font text-6xl md:text-8xl lg:text-9xl bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-teal-300 cursor-pointer hover:opacity-80 transition-opacity">
                         <!-- Time will be injected here by JavaScript -->
                     </div>
 
@@ -127,6 +127,36 @@
                 </div>
             </div>
 
+        </div>
+    </div>
+
+    <!-- Calendar Modal -->
+    <div id="calendar-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-gray-800 p-6 rounded-lg shadow-2xl border border-gray-700 w-80 max-w-full mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <button id="prev-month" class="text-gray-400 hover:text-white p-1 hover:bg-gray-700 rounded transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                </button>
+                <h3 id="calendar-month-year" class="text-lg font-bold text-white"></h3>
+                <button id="next-month" class="text-gray-400 hover:text-white p-1 hover:bg-gray-700 rounded transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                </button>
+            </div>
+            <div class="grid grid-cols-7 gap-1 text-center mb-2">
+                <div class="text-red-400 text-xs font-medium">Sun</div>
+                <div class="text-gray-500 text-xs font-medium">Mon</div>
+                <div class="text-gray-500 text-xs font-medium">Tue</div>
+                <div class="text-gray-500 text-xs font-medium">Wed</div>
+                <div class="text-gray-500 text-xs font-medium">Thu</div>
+                <div class="text-gray-500 text-xs font-medium">Fri</div>
+                <div class="text-gray-500 text-xs font-medium">Sat</div>
+            </div>
+            <div id="calendar-days" class="grid grid-cols-7 gap-1 text-center">
+                <!-- Days will be injected here -->
+            </div>
+            <div class="mt-4 flex justify-end">
+                <button id="close-calendar" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm transition-colors">Close</button>
+            </div>
         </div>
     </div>
 
