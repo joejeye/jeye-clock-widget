@@ -8,6 +8,7 @@ This project is a web application that displays the current time, a persistent t
 *   **Todo List:** A persistent todo list stored in a SQLite database via a REST API.
 *   **Weather Display:** Shows the current weather conditions based on the user's geolocation, proxied through the backend to protect API keys.
 *   **Pop-up Calendar:** Interactive monthly calendar view, accessible by clicking the time or date display.
+*   **Due Dates & Filtering:** Assign due dates/times to tasks. Clock icons indicate status (future, today, overdue). Filter tasks by clicking a date on the calendar.
 
 # Deployment
 

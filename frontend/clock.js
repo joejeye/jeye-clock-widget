@@ -102,6 +102,15 @@ function renderCalendar(date) {
             dayDiv.classList.add('text-gray-300');
         }
 
+        // Add click handler to filter todos
+        dayDiv.addEventListener('click', () => {
+             const clickedDate = new Date(year, month, i);
+             if (typeof todoApp !== 'undefined' && todoApp.filterByDate) {
+                 todoApp.filterByDate(clickedDate);
+             }
+             closeCalendar();
+        });
+
         calendarDays.appendChild(dayDiv);
     }
 }

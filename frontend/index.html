@@ -84,9 +84,9 @@
             <!-- Todo List Section -->
             <div class="bg-gray-800 rounded-lg p-6 shadow-lg">
                 <div class="flex items-center justify-center mb-6">
-                    <h2
+                    <h2 id="todo-list-title"
                         class="text-2xl font-bold text-center bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-300">
-                        Todo List
+                        <span id="todo-list-title-text">Todo List</span>
                     </h2>
 
                 </div>
@@ -156,6 +156,37 @@
             </div>
             <div class="mt-4 flex justify-end">
                 <button id="close-calendar" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm transition-colors">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Due Date Picker Modal -->
+    <div id="due-date-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-gray-800 p-6 rounded-lg shadow-2xl border border-gray-700 w-96 max-w-full mx-4">
+            <h3 class="text-lg font-bold text-white mb-4">Set Due Date</h3>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-gray-400 text-sm font-medium mb-1">Date</label>
+                    <input type="date" id="due-date-input" class="w-full bg-gray-700 text-white border border-gray-600 rounded px-3 py-2 focus:outline-none focus:border-blue-500">
+                </div>
+                
+                <div class="flex space-x-4">
+                    <div class="flex-1">
+                        <label class="block text-gray-400 text-sm font-medium mb-1">Hour (0-23)</label>
+                        <input type="number" id="due-hour-input" min="0" max="23" placeholder="HH" class="w-full bg-gray-700 text-white border border-gray-600 rounded px-3 py-2 focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-gray-400 text-sm font-medium mb-1">Minute (0-59)</label>
+                        <input type="number" id="due-minute-input" min="0" max="59" placeholder="MM" class="w-full bg-gray-700 text-white border border-gray-600 rounded px-3 py-2 focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end space-x-3">
+                <button id="clear-due-date" class="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded text-sm transition-colors mr-auto">Clear</button>
+                <button id="cancel-due-date" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm transition-colors">Cancel</button>
+                <button id="save-due-date" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm transition-colors font-medium">Save</button>
             </div>
         </div>
     </div>
