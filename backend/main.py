@@ -66,6 +66,7 @@ def update_todo(todo_id: int, todo_update: Todo, session: Session = Depends(get_
     todo.text = todo_update.text
     todo.completed = todo_update.completed
     todo.archived = todo_update.archived
+    todo.meta_data = todo_update.meta_data
     # We don't update createdAt usually
     
     session.add(todo)
