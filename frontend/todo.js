@@ -36,7 +36,18 @@ class TodoList {
         if (this.saveDueDateBtn) this.saveDueDateBtn.addEventListener('click', () => this.saveDueDate());
         if (this.clearDueDateBtn) this.clearDueDateBtn.addEventListener('click', () => this.clearDueDate());
         if (this.cancelDueDateBtn) this.cancelDueDateBtn.addEventListener('click', () => this.closeDueDateModal());
-        if (this.dueDateInput) this.dueDateInput.addEventListener('change', () => this.updateDueDateDisplay());
+        if (this.dueDateInput) {
+            this.dueDateInput.addEventListener('change', () => this.updateDueDateDisplay());
+            this.dueDateInput.addEventListener('click', (e) => {
+                if ('showPicker' in HTMLInputElement.prototype) {
+                    try {
+                        this.dueDateInput.showPicker();
+                    } catch (error) {
+                        console.error('Error showing date picker:', error);
+                    }
+                }
+            });
+        }
         if (this.dueDateModal) {
             this.dueDateModal.addEventListener('click', (e) => {
                 if (e.target === this.dueDateModal) this.closeDueDateModal();
