@@ -46,14 +46,14 @@ class TodoList {
 
     filterByDate(date) {
         this.filterDate = date;
-        const dateString = date.toLocaleDateString();
+        const dateString = date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' });
         const titleText = document.getElementById('todo-list-title-text');
         
         // Update title and add reset button
         if (titleText) {
             titleText.innerHTML = `Todo List (${dateString}) 
-                <button onclick="todoApp.resetFilter()" class="ml-2 text-red-400 hover:text-red-300 transition-colors inline-block align-middle" title="Reset Filter">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                <button id="reset-filter-btn" onclick="todoApp.resetFilter()" class="ml-2 text-red-400 hover:text-red-300 transition-colors inline-block align-middle" title="Reset Filter">
+                    <img src="resource/go-back-arrow.svg" class="w-5 h-5" alt="Reset Filter">
                 </button>`;
         }
         this.render();
