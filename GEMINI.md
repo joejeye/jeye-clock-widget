@@ -10,6 +10,56 @@ This project is a web application that displays the current time, a persistent t
 *   **Pop-up Calendar:** Interactive monthly calendar view, accessible by clicking the time or date display.
 *   **Due Dates & Filtering:** Assign due dates/times to tasks. Clock icons indicate status (future, today, overdue). Filter tasks by clicking a date on the calendar.
 
+# System Architecture
+
+## High-Level Design
+
+```mermaid
+flowchart TD
+    subgraph Client
+        Browser[Browser]
+    end
+
+    subgraph Server [Docker Container]
+        FastAPI[FastAPI Backend]
+        SQLite[(SQLite Database)]
+        StaticFiles[Static Files]
+    end
+
+    subgraph External
+        OWM[OpenWeatherMap API]
+    end
+
+    Browser -- "HTTP / (Static Assets)" --> FastAPI
+    Browser -- "HTTP /api/* (Data)" --> FastAPI
+    FastAPI -- "Reads/Writes" --> SQLite
+    FastAPI -- "Serves" --> StaticFiles
+    FastAPI -- "HTTPS" --> OWM
+```
+
+## Components
+
+### 1. Frontend
+*   **Technology:** HTML5, JavaScript (Vanilla), Tailwind CSS.
+*   **Responsibilities:**
+    *   Renders the UI (Clock, Todo List, Weather, Calendar).
+    *   Manages local state and user interactions.
+    *   Communicates with the backend via REST API (`/api/todos`, `/api/weather`).
+    *   Handles Geolocation API for weather updates.
+
+### 2. Backend
+*   **Technology:** Python, FastAPI, SQLModel (SQLAlchemy).
+*   **Responsibilities:**
+    *   **Static File Serving:** Serves the frontend assets (`index.html`, `js`, `css`) from the root URL.
+    *   **Todo API:** Provides CRUD endpoints for managing tasks.
+    *   **Weather Proxy:** Proxies requests to OpenWeatherMap to hide the API key from the client.
+    *   **Database Management:** Manages the SQLite database connection and schema.
+
+### 3. Data Storage
+*   **Technology:** SQLite.
+*   **File:** `backend/database.db` (Persistent Volume).
+*   **Data:** Stores Todo items including text, completion status, archive status, and metadata (due dates).
+
 # Deployment
 
 The application is containerized using Docker and orchestrated with Docker Compose.
