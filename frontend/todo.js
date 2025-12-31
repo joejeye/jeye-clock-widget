@@ -445,7 +445,9 @@ class TodoList {
             const dueDate = new Date(dueTime * 1000);
             const now = new Date();
             
-            titleText = `Due: ${dueDate.toLocaleString()}`;
+            const dateStr = dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            const timeStr = dueDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+            titleText = `${dateStr}, ${timeStr}`;
             iconColorClass = 'text-green-500';
             
             if (now.getTime() > dueDate.getTime()) {
@@ -456,8 +458,8 @@ class TodoList {
         }
             
         const clockIconHtml = `
-            <div class="cursor-pointer hover:bg-gray-600 rounded p-1 transition-colors" onclick="todoApp.openDueDateModal(${todo.id})">
-                <svg class="h-4 w-4 ${iconColorClass} flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" title="${titleText}">
+            <div class="cursor-pointer hover:bg-gray-600 rounded p-1 transition-colors" onclick="todoApp.openDueDateModal(${todo.id})" title="${titleText}">
+                <svg class="h-4 w-4 ${iconColorClass} flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
             </div>
