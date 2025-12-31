@@ -22,6 +22,7 @@ class TodoList {
         this.currentTodoId = null;
         this.showArchived = false;
         this.filterDate = null;
+        this.autoRefreshTimeout = null;
         
         this.init();
     }
@@ -350,6 +351,53 @@ class TodoList {
         }
     }
     
+    scheduleAutoRefresh(forceDelay = null) {
+        if (this.autoRefreshTimeout) clearTimeout(this.autoRefreshTimeout);
+        
+        let delay = forceDelay;
+        
+        if (delay === null) {
+            const now = Date.now();
+            const delays = [];
+            
+            // Check midnight transition (Green -> Yellow)
+            const midnight = new Date();
+            midnight.setHours(24, 0, 0, 0);
+            delays.push(midnight.getTime() - now);
+
+            // Check due time transitions (Yellow -> Red)
+            this.todos.forEach(t => {
+                if (!t.archived && t.meta_data && typeof t.meta_data.dueTime === 'number') {
+                    const dueTimeMs = t.meta_data.dueTime * 1000;
+                    const diff = dueTimeMs - now;
+                    if (diff > 0) {
+                        delays.push(diff);
+                    }
+                }
+            });
+            
+            delay = Math.min(...delays);
+        }
+
+        // Add a small buffer (50ms) to ensure time has definitely passed
+        const finalDelay = Math.max(0, delay) + 50;
+        
+        // Cap at ~24 hours to be safe with setTimeout limits
+        if (finalDelay > 86400000) return;
+
+        this.autoRefreshTimeout = setTimeout(() => {
+            const isEditing = this.todoList.querySelector('input[type="text"]');
+            const isModalOpen = !this.dueDateModal.classList.contains('hidden');
+            
+            if (!isEditing && !isModalOpen) {
+                this.render();
+            } else {
+                // Retry soon if blocked
+                this.scheduleAutoRefresh(1000);
+            }
+        }, finalDelay);
+    }
+
     render() {
         this.todoList.innerHTML = '';
         
@@ -371,10 +419,12 @@ class TodoList {
                  this.todoList.innerHTML = `<div class="text-center text-gray-400 py-8">No tasks due on ${this.filterDate.toLocaleDateString()}</div>`;
                  this.todoStats.classList.add('hidden');
                  this.emptyState.classList.add('hidden'); // Hide generic empty state
+                 this.scheduleAutoRefresh();
                  return;
             } else {
                 this.emptyState.classList.remove('hidden');
                 this.todoStats.classList.add('hidden');
+                this.scheduleAutoRefresh();
                 return;
             }
         }
@@ -428,6 +478,7 @@ class TodoList {
         }
         
         this.updateStats();
+        this.scheduleAutoRefresh();
     }
     
     createTodoElement(todo) {
