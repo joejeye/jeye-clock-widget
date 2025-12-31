@@ -168,7 +168,18 @@
             <div class="space-y-4">
                 <div>
                     <label class="block text-gray-400 text-sm font-medium mb-1">Date</label>
-                    <input type="date" id="due-date-input" class="w-full bg-gray-700 text-white border border-gray-600 rounded px-3 py-2 focus:outline-none focus:border-blue-500">
+                    <div class="relative">
+                        <input type="text" id="due-date-display" readonly 
+                            class="w-full bg-gray-700 text-white border border-gray-600 rounded pl-3 pr-10 py-2 focus:outline-none focus:border-blue-500 cursor-pointer"
+                            placeholder="Select date...">
+                        <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-400">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                        </div>
+                        <input type="date" id="due-date-input" 
+                            class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10">
+                    </div>
                 </div>
                 
                 <div class="flex space-x-4">

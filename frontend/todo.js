@@ -12,6 +12,7 @@ class TodoList {
         // Due Date Modal Elements
         this.dueDateModal = document.getElementById('due-date-modal');
         this.dueDateInput = document.getElementById('due-date-input');
+        this.dueDateDisplay = document.getElementById('due-date-display');
         this.dueHourInput = document.getElementById('due-hour-input');
         this.dueMinuteInput = document.getElementById('due-minute-input');
         this.saveDueDateBtn = document.getElementById('save-due-date');
@@ -35,6 +36,7 @@ class TodoList {
         if (this.saveDueDateBtn) this.saveDueDateBtn.addEventListener('click', () => this.saveDueDate());
         if (this.clearDueDateBtn) this.clearDueDateBtn.addEventListener('click', () => this.clearDueDate());
         if (this.cancelDueDateBtn) this.cancelDueDateBtn.addEventListener('click', () => this.closeDueDateModal());
+        if (this.dueDateInput) this.dueDateInput.addEventListener('change', () => this.updateDueDateDisplay());
         if (this.dueDateModal) {
             this.dueDateModal.addEventListener('click', (e) => {
                 if (e.target === this.dueDateModal) this.closeDueDateModal();
@@ -89,12 +91,26 @@ class TodoList {
             this.clearDueDateBtn.classList.add('hidden');
         }
         
+        this.updateDueDateDisplay();
         this.dueDateModal.classList.remove('hidden');
     }
 
     closeDueDateModal() {
         this.dueDateModal.classList.add('hidden');
         this.currentTodoId = null;
+    }
+
+    updateDueDateDisplay() {
+        if (!this.dueDateInput || !this.dueDateDisplay) return;
+        const dateVal = this.dueDateInput.value;
+        if (dateVal) {
+            // Use T00:00:00 to avoid timezone shifts when parsing YYYY-MM-DD
+            const date = new Date(dateVal + 'T00:00:00');
+            const options = { month: 'short', day: 'numeric', year: 'numeric' };
+            this.dueDateDisplay.value = new Intl.DateTimeFormat('en-US', options).format(date);
+        } else {
+            this.dueDateDisplay.value = '';
+        }
     }
 
     async clearDueDate() {
