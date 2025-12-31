@@ -87,16 +87,23 @@ class TodoList {
         this.currentTodoId = id;
         const todo = this.todos.find(t => t.id === id);
         
+        const toLocalDateString = (date) => {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+
         if (todo && todo.meta_data && typeof todo.meta_data.dueTime === 'number') {
             const date = new Date(todo.meta_data.dueTime * 1000);
-            this.dueDateInput.value = date.toISOString().split('T')[0];
+            this.dueDateInput.value = toLocalDateString(date);
             this.dueHourInput.value = date.getHours();
             this.dueMinuteInput.value = date.getMinutes();
             this.clearDueDateBtn.classList.remove('hidden');
         } else {
             // Default to today, next hour
             const now = new Date();
-            this.dueDateInput.value = now.toISOString().split('T')[0];
+            this.dueDateInput.value = toLocalDateString(now);
             this.dueHourInput.value = (now.getHours() + 1) % 24;
             this.dueMinuteInput.value = 0;
             this.clearDueDateBtn.classList.add('hidden');
