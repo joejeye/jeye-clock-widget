@@ -54,43 +54,49 @@ const calendarModal = document.getElementById('calendar-modal');
 const closeCalendarBtn = document.getElementById('close-calendar');
 const prevMonthBtn = document.getElementById('prev-month');
 const nextMonthBtn = document.getElementById('next-month');
+const prevYearBtn = document.getElementById('prev-year');
+const nextYearBtn = document.getElementById('next-year');
 const calendarMonthYear = document.getElementById('calendar-month-year');
 const calendarDays = document.getElementById('calendar-days');
+const calendarWeekdays = document.getElementById('calendar-weekdays');
+const todayCalendarBtn = document.getElementById('today-calendar');
 
 let currentCalendarDate = new Date();
+let calendarView = 'days'; // 'days', 'months', 'years'
 
-function renderCalendar(date) {
+// Add cursor pointer to header to indicate interactivity
+calendarMonthYear.classList.add('cursor-pointer', 'hover:text-blue-400', 'transition-colors');
+
+function renderDays(date) {
     const year = date.getFullYear();
     const month = date.getMonth();
 
-    // Set month and year in header
+    // Set header
     const monthName = new Intl.DateTimeFormat('en-US', { month: 'long' }).format(date);
     calendarMonthYear.textContent = `${monthName} ${year}`;
 
-    // Clear previous days
+    // Show weekdays
+    calendarWeekdays.classList.remove('hidden');
+
+    // Setup grid
+    calendarDays.className = 'grid grid-cols-7 gap-1 text-center';
     calendarDays.innerHTML = '';
 
     // Get first day of the month
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
-    
-    // Days in month
     const daysInMonth = lastDay.getDate();
-    
-    // Day of week of the first day (0-6, Sun-Sat)
     const startingDay = firstDay.getDay();
 
-    // Today's date for highlighting
     const today = new Date();
     const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
 
-    // Add empty slots for days before the first day
+    // Empty slots
     for (let i = 0; i < startingDay; i++) {
-        const emptyDiv = document.createElement('div');
-        calendarDays.appendChild(emptyDiv);
+        calendarDays.appendChild(document.createElement('div'));
     }
 
-    // Add days
+    // Days
     for (let i = 1; i <= daysInMonth; i++) {
         const dayDiv = document.createElement('div');
         dayDiv.textContent = i;
@@ -98,7 +104,7 @@ function renderCalendar(date) {
         
         const currentDate = new Date(year, month, i);
 
-        // Check for tasks on this day
+        // Check for tasks
         let hasTask = false;
         if (typeof todoApp !== 'undefined' && todoApp.todos) {
             hasTask = todoApp.todos.some(todo => {
@@ -118,7 +124,6 @@ function renderCalendar(date) {
             dayDiv.classList.add('text-gray-300');
         }
 
-        // Add click handler to filter todos
         dayDiv.addEventListener('click', () => {
              const clickedDate = new Date(year, month, i);
              if (typeof todoApp !== 'undefined' && todoApp.filterByDate) {
@@ -131,9 +136,123 @@ function renderCalendar(date) {
     }
 }
 
+function renderMonths(date) {
+    const year = date.getFullYear();
+    calendarMonthYear.textContent = `${year}`;
+
+    // Hide weekdays
+    calendarWeekdays.classList.add('hidden');
+
+    // Setup grid
+    calendarDays.className = 'grid grid-cols-3 gap-2 text-center';
+    calendarDays.innerHTML = '';
+
+    const monthNames = [];
+    for (let i = 0; i < 12; i++) {
+        monthNames.push(new Intl.DateTimeFormat('en-US', { month: 'short' }).format(new Date(year, i, 1)));
+    }
+
+    const currentMonth = new Date().getMonth();
+    const isCurrentYear = new Date().getFullYear() === year;
+
+    monthNames.forEach((name, index) => {
+        const monthDiv = document.createElement('div');
+        monthDiv.textContent = name;
+        monthDiv.classList.add('py-3', 'rounded', 'hover:bg-gray-700', 'cursor-pointer', 'text-gray-300');
+
+        if (isCurrentYear && index === currentMonth) {
+            monthDiv.classList.add('bg-blue-600', 'text-white', 'font-bold');
+        }
+
+        monthDiv.addEventListener('click', () => {
+            currentCalendarDate.setMonth(index);
+            calendarView = 'days';
+            updateCalendarView();
+        });
+
+        calendarDays.appendChild(monthDiv);
+    });
+}
+
+function renderYears(date) {
+    const currentYear = date.getFullYear();
+    const startYear = Math.floor(currentYear / 10) * 10;
+    const endYear = startYear + 9; // Range inclusive
+    // Show a slightly wider range for better UX? Usually standard decades.
+
+    calendarMonthYear.textContent = `${startYear} - ${endYear}`;
+
+    // Hide weekdays
+    calendarWeekdays.classList.add('hidden');
+
+    // Setup grid
+    calendarDays.className = 'grid grid-cols-4 gap-2 text-center';
+    calendarDays.innerHTML = '';
+
+    // Render years. Maybe include one before and one after?
+    // Let's do startYear - 1 to endYear + 2 to fill 12 slots? 
+    // Or just 10 years. 10 doesn't fit nicely in grid-4.
+    // 12 slots: startYear - 1 to startYear + 10.
+    
+    const displayStart = startYear - 1;
+    const displayEnd = startYear + 10;
+
+    const todayYear = new Date().getFullYear();
+
+    for (let i = displayStart; i <= displayEnd; i++) {
+        const yearDiv = document.createElement('div');
+        yearDiv.textContent = i;
+        yearDiv.classList.add('py-3', 'rounded', 'hover:bg-gray-700', 'cursor-pointer', 'text-gray-300');
+
+        if (i === todayYear) {
+             yearDiv.classList.add('bg-blue-600', 'text-white', 'font-bold');
+        } else if (i < startYear || i > endYear) {
+            yearDiv.classList.add('text-gray-600'); // Out of decade
+        }
+
+        yearDiv.addEventListener('click', () => {
+            currentCalendarDate.setFullYear(i);
+            calendarView = 'months';
+            updateCalendarView();
+        });
+
+        calendarDays.appendChild(yearDiv);
+    }
+}
+
+function updateCalendarView() {
+    if (calendarView === 'days') {
+        renderDays(currentCalendarDate);
+        // Show month nav buttons
+        if(prevMonthBtn) prevMonthBtn.style.visibility = 'visible';
+        if(nextMonthBtn) nextMonthBtn.style.visibility = 'visible';
+    } else if (calendarView === 'months') {
+        renderMonths(currentCalendarDate);
+        // Hide month nav buttons
+        if(prevMonthBtn) prevMonthBtn.style.visibility = 'hidden';
+        if(nextMonthBtn) nextMonthBtn.style.visibility = 'hidden';
+    } else if (calendarView === 'years') {
+        renderYears(currentCalendarDate);
+        // Hide month nav buttons
+        if(prevMonthBtn) prevMonthBtn.style.visibility = 'hidden';
+        if(nextMonthBtn) nextMonthBtn.style.visibility = 'hidden';
+    }
+}
+
+// Header click handler
+calendarMonthYear.addEventListener('click', () => {
+    if (calendarView === 'days') {
+        calendarView = 'months';
+    } else if (calendarView === 'months') {
+        calendarView = 'years';
+    }
+    updateCalendarView();
+});
+
 function openCalendar() {
-    currentCalendarDate = new Date(); // Reset to current date when opening
-    renderCalendar(currentCalendarDate);
+    currentCalendarDate = new Date(); // Reset to current date
+    calendarView = 'days';
+    updateCalendarView();
     calendarModal.classList.remove('hidden');
 }
 
@@ -155,17 +274,52 @@ if (calendarModal) {
     });
 }
 
+// Navigation Buttons
 if (prevMonthBtn) {
-    prevMonthBtn.addEventListener('click', () => {
-        currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1);
-        renderCalendar(currentCalendarDate);
+    prevMonthBtn.addEventListener('click', (e) => {
+        if (calendarView === 'days') {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1);
+            updateCalendarView();
+        }
     });
 }
 
 if (nextMonthBtn) {
-    nextMonthBtn.addEventListener('click', () => {
-        currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1);
-        renderCalendar(currentCalendarDate);
+    nextMonthBtn.addEventListener('click', (e) => {
+        if (calendarView === 'days') {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1);
+            updateCalendarView();
+        }
+    });
+}
+
+if (prevYearBtn) {
+    prevYearBtn.addEventListener('click', (e) => {
+        if (calendarView === 'days' || calendarView === 'months') {
+            currentCalendarDate.setFullYear(currentCalendarDate.getFullYear() - 1);
+        } else if (calendarView === 'years') {
+             currentCalendarDate.setFullYear(currentCalendarDate.getFullYear() - 10);
+        }
+        updateCalendarView();
+    });
+}
+
+if (nextYearBtn) {
+    nextYearBtn.addEventListener('click', (e) => {
+        if (calendarView === 'days' || calendarView === 'months') {
+            currentCalendarDate.setFullYear(currentCalendarDate.getFullYear() + 1);
+        } else if (calendarView === 'years') {
+             currentCalendarDate.setFullYear(currentCalendarDate.getFullYear() + 10);
+        }
+        updateCalendarView();
+    });
+}
+
+if (todayCalendarBtn) {
+    todayCalendarBtn.addEventListener('click', () => {
+        currentCalendarDate = new Date();
+        calendarView = 'days';
+        updateCalendarView();
     });
 }
 
