@@ -24,9 +24,46 @@ class TodoList {
         this.filterDate = null;
         this.autoRefreshTimeout = null;
         
+        this.tooltip = null;
+        this.createTooltip();
+        
         this.init();
     }
     
+    createTooltip() {
+        this.tooltip = document.createElement('div');
+        this.tooltip.className = 'fixed z-50 hidden bg-gray-900 text-white text-xs rounded px-2 py-1 shadow-lg pointer-events-none whitespace-nowrap border border-gray-700';
+        document.body.appendChild(this.tooltip);
+    }
+
+    showTooltip(e) {
+        const text = e.currentTarget.getAttribute('data-tooltip');
+        if (!text || !this.tooltip) return;
+
+        this.tooltip.textContent = text;
+        this.tooltip.classList.remove('hidden');
+
+        const rect = e.currentTarget.getBoundingClientRect();
+        const tooltipRect = this.tooltip.getBoundingClientRect();
+
+        let top = rect.top - tooltipRect.height - 8;
+        let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+
+        // Simple boundary check to prevent top overflow
+        if (top < 0) {
+             top = rect.bottom + 8;
+        }
+
+        this.tooltip.style.top = `${top}px`;
+        this.tooltip.style.left = `${left}px`;
+    }
+
+    hideTooltip() {
+        if (this.tooltip) {
+            this.tooltip.classList.add('hidden');
+        }
+    }
+
     init() {
         this.addTodoBtn.addEventListener('click', () => this.addTodo());
         this.todoInput.addEventListener('keypress', (e) => {
@@ -516,7 +553,11 @@ class TodoList {
         }
             
         const clockIconHtml = `
-            <div class="cursor-pointer hover:bg-gray-600 rounded p-1 transition-colors" onclick="todoApp.openDueDateModal(${todo.id})" title="${titleText}">
+            <div class="cursor-pointer hover:bg-gray-600 rounded p-1 transition-colors" 
+                 onclick="todoApp.openDueDateModal(${todo.id})" 
+                 data-tooltip="${titleText}"
+                 onmouseenter="todoApp.showTooltip(event)"
+                 onmouseleave="todoApp.hideTooltip()">
                 <svg class="h-4 w-4 ${iconColorClass} flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
