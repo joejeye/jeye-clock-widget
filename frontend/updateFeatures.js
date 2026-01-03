@@ -56,15 +56,37 @@ function getWeather() {
                 units: 'metric'
             })
             const callApi = () => {
-                fetch(`/api/weather?${params.toString()}`)
+                const weatherPromise = fetch(`/api/weather?${params.toString()}`)
                     .then(response => {
                         if (!response.ok) {
                             weatherInfoDiv.textContent = 'Error fetching weather data';
                             throw new Error('Network response was not ok');
                         }
                         return response.json();
+                    });
+
+                const cityPromise = fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
+                    .then(response => {
+                        if (!response.ok) return null;
+                        return response.json();
                     })
                     .then(data => {
+                        if (!data || !data.address) return '';
+                        return data.address.city || 
+                               data.address.town || 
+                               data.address.village || 
+                               data.address.hamlet ||
+                               data.address.suburb ||
+                               data.address.county || 
+                               '';
+                    })
+                    .catch(error => {
+                        console.error('Error fetching city name:', error);
+                        return '';
+                    });
+
+                Promise.all([weatherPromise, cityPromise])
+                    .then(([data, cityName]) => {
                         // console.log(data);
                         const temp = Math.round(data.current.temp);
                         const feelsLikeTemp = Math.round(data.current.feels_like);
@@ -96,6 +118,7 @@ function getWeather() {
                                     </span>
                                 </div>
                                 <div style="text-transform: capitalize;">${weatherDescription}</div>
+                                <div>${cityName}</div>
                             </div>
                         `;
                     })
