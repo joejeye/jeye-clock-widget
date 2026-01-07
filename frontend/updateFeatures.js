@@ -155,4 +155,4 @@ function updateFeatures() {
 }
 
 updateFeatures();
-setInterval(getWeather, 3 * 60 * 1000); // Update weather every 3 minutes
+setInterval(getWeather, 5 * 60 * 1000); // Update weather every 5 minutes
