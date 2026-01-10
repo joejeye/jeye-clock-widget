@@ -89,7 +89,7 @@ This project can be deployed locally using Docker Compose or to the cloud using 
 3.  **Start the Service:**
     Run the following command in the project root:
     ```bash
-    docker-compose up --build
+    docker-compose up -d --build
     ```
 
 4.  **Access:**
@@ -111,6 +111,8 @@ This guide assumes you have a Google Kubernetes Engine (Autopilot or Standard) c
 
 ### Steps
 
+#### Initial Setup (First time only)
+
 1.  **Reserve a Global Static IP:**
     This IP will be used by the GKE Ingress (Global Load Balancer).
     ```bash
@@ -125,13 +127,22 @@ This guide assumes you have a Google Kubernetes Engine (Autopilot or Standard) c
     *   **IPv4 address:** The static IP from Step 1.
     *   **Proxy status:** Set to **DNS Only** (Grey Cloud) initially to allow certificate provisioning.
 
-3.  **Build and Push Image:**
+3.  **Configure Cloud NAT Gateway:**
+    Required for GKE clusters to make requests to external networks (e.g., OpenWeatherMap API).
+    ```bash
+    gcloud compute routers create disp-time-router --region YOUR_REGION --network YOUR_NETWORK
+    gcloud compute routers nats create disp-time-nat --router disp-time-router --region YOUR_REGION --auto-allocate-nat-external-ip --nat-all-subnet-ip-ranges
+    ```
+
+#### Redeployment (Every time you update the app)
+
+4.  **Build and Push Image:**
     ```bash
     docker build -f backend/Dockerfile -t gcr.io/YOUR_PROJECT_ID/disp-time-backend:latest .
     docker push gcr.io/YOUR_PROJECT_ID/disp-time-backend:latest
     ```
 
-4.  **Configure Secrets:**
+5.  **Configure Secrets:**
     Create a Kubernetes Secret for the API key and Admin credentials.
     ```bash
     kubectl create secret generic disp-time-secrets \
@@ -140,7 +151,7 @@ This guide assumes you have a Google Kubernetes Engine (Autopilot or Standard) c
     --from-literal=ADMIN_PASSWORD=your_password
     ```
 
-5.  **Deploy Infrastructure:**
+6.  **Deploy Infrastructure:**
     Apply the manifests to set up the persistent volume, service, SSL certificate, and Ingress routing.
     ```bash
     kubectl apply -f k8s/pvc.yaml
@@ -151,7 +162,7 @@ This guide assumes you have a Google Kubernetes Engine (Autopilot or Standard) c
     kubectl apply -f k8s/ingress.yaml
     ```
 
-6.  **Verify:**
+7.  **Verify:**
     *   Check cert status: `kubectl describe managedcertificate disp-time-cert` (Wait for `Status: Active`).
     *   Check ingress: `kubectl get ingress disp-time-ingress`.
     *   Access via: `https://disp-time.jys-reality.win`.
