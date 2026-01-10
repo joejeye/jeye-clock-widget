@@ -723,7 +723,7 @@ class TodoList {
         }
 
         document.addEventListener('click', (e) => {
-            if (this.menuDropdown && !this.menuDropdown.classList.contains('hidden') && !this.menuDropdown.contains(e.target) && e.target !== this.menuBtn) {
+            if (this.menuDropdown && !this.menuDropdown.classList.contains('hidden') && !this.menuDropdown.contains(e.target) && !this.menuBtn.contains(e.target)) {
                 this.menuDropdown.classList.add('hidden');
             }
         });
@@ -760,14 +760,17 @@ class TodoList {
         }
         
         const dataStr = JSON.stringify(this.todos, null, 2);
-        const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
         
         const exportFileDefaultName = `todo_backup_${new Date().toISOString().slice(0,10)}.json`;
         
         const linkElement = document.createElement('a');
-        linkElement.setAttribute('href', dataUri);
+        linkElement.setAttribute('href', url);
         linkElement.setAttribute('download', exportFileDefaultName);
         linkElement.click();
+        
+        setTimeout(() => URL.revokeObjectURL(url), 100);
     }
 
     handleImportFile(event) {
@@ -797,19 +800,19 @@ class TodoList {
 
     async processImport(todos) {
         // Reverse if they seem to be in descending order (ID based) so they get created in correct chronological order
-        // Assuming the export was from this app, it's sorted Newest -> Oldest.
-        // We want to create Oldest first so it gets a lower ID.
         const todosToImport = [...todos].reverse();
         
         let count = 0;
+        let authErrorOccurred = false;
+
         for (const todo of todosToImport) {
-            // Sanitize and prepare object
+            if (authErrorOccurred) break;
+
             const newTodo = {
                 text: todo.text || 'Untitled Task',
                 completed: !!todo.completed,
                 archived: !!todo.archived,
                 meta_data: todo.meta_data || null,
-                // If backend supports createdAt, we can send it.
                 createdAt: todo.createdAt 
             };
             
@@ -820,6 +823,11 @@ class TodoList {
                     body: JSON.stringify(newTodo)
                 });
                 
+                if (this.handleAuthError(response)) {
+                    authErrorOccurred = true;
+                    continue;
+                }
+
                 if (response.ok) {
                     count++;
                 }
@@ -828,8 +836,12 @@ class TodoList {
             }
         }
         
-        alert(`Successfully imported ${count} tasks.`);
-        this.fetchTodos();
+        if (count > 0) {
+            alert(`Successfully imported ${count} tasks.`);
+            this.fetchTodos();
+        } else if (!authErrorOccurred) {
+            alert('No tasks were imported.');
+        }
     }
 
     escapeHtml(text) {
