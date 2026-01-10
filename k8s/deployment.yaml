@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: disp-time-backend
+spec:
+  replicas: 1 # MUST be 1 for SQLite
+  strategy:
+    type: Recreate # Ensures old pod dies before new one starts to release volume lock
+  selector:
+    matchLabels:
+      app: disp-time-web
+  template:
+    metadata:
+      labels:
+        app: disp-time-web
+    spec:
+      containers:
+      - name: backend
+        image: gcr.io/mercurial-cairn-466220-b5/disp-time-backend:latest # REPLACE WITH YOUR IMAGE URL
+        ports:
+        - containerPort: 19563
+        env:
+        - name: DB_PATH
+          value: "/data/database.db"
+        - name: OPENWEATHER_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: disp-time-secrets
+              key: OPENWEATHER_API_KEY
+        volumeMounts:
+        - mountPath: "/data"
+          name: data-volume
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 19563
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      volumes:
+      - name: data-volume
+        persistentVolumeClaim:
+          claimName: todo-db-pvc

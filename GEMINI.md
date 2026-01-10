@@ -91,6 +91,49 @@ The application is containerized using Docker and orchestrated with Docker Compo
 4.  **Access:**
     Open your browser and navigate to: `http://localhost:19563` (or the port you configured).
 
+## Kubernetes Deployment (GKE)
+
+This guide assumes you have a Google Kubernetes Engine (Autopilot or Standard) cluster running.
+
+### 1. Prerequisites
+1.  **Install Tools:** Ensure you have `gcloud`, `docker`, and `kubectl` installed.
+2.  **Authenticate:**
+    ```bash
+    gcloud auth login
+    gcloud config set project YOUR_PROJECT_ID
+    gcloud auth configure-docker
+    gcloud container clusters get-credentials YOUR_CLUSTER_NAME --region YOUR_REGION
+    ```
+
+### 2. Build and Push Image
+Build the Docker image and push it to Google Container Registry (GCR) or Artifact Registry.
+```bash
+docker build -f backend/Dockerfile -t gcr.io/YOUR_PROJECT_ID/disp-time-backend:latest .
+docker push gcr.io/YOUR_PROJECT_ID/disp-time-backend:latest
+```
+
+### 3. Configure Secrets
+Create a Kubernetes Secret for the API key directly via the command line (avoiding base64 manual encoding).
+```bash
+kubectl create secret generic disp-time-secrets --from-literal=OPENWEATHER_API_KEY=your_actual_api_key_here
+```
+
+### 4. Deploy
+Update `k8s/deployment.yaml` with your image name (`gcr.io/YOUR_PROJECT_ID/...`). Then apply the manifests:
+```bash
+kubectl apply -f k8s/pvc.yaml
+kubectl apply -f k8s/deployment.yaml
+kubectl apply -f k8s/service.yaml
+```
+
+### 5. Verify
+Check the status of your pods and service:
+```bash
+kubectl get pods
+kubectl get services
+```
+The `EXTERNAL-IP` of the `disp-time-service` is your application's public URL.
+
 # Configuration
 
 *   **API Key:** Managed in `backend/.env`. This file is git-ignored for security.
