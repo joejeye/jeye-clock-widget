@@ -1,6 +1,8 @@
 class TodoList {
     constructor() {
         this.todos = [];
+        this.credentials = null;
+        
         this.todoInput = document.getElementById('todo-input');
         this.addTodoBtn = document.getElementById('add-todo-btn');
         this.todoList = document.getElementById('todo-list');
@@ -19,6 +21,13 @@ class TodoList {
         this.clearDueDateBtn = document.getElementById('clear-due-date');
         this.cancelDueDateBtn = document.getElementById('cancel-due-date');
         
+        // Login Modal Elements
+        this.loginModal = document.getElementById('login-modal');
+        this.loginForm = document.getElementById('login-form');
+        this.usernameInput = document.getElementById('username-input');
+        this.passwordInput = document.getElementById('password-input');
+        this.loginError = document.getElementById('login-error');
+        
         this.currentTodoId = null;
         this.showArchived = false;
         this.filterDate = null;
@@ -27,9 +36,16 @@ class TodoList {
         this.tooltip = null;
         this.createTooltip();
         
+        // Load credentials from session storage if available
+        const storedCreds = sessionStorage.getItem('auth_creds');
+        if (storedCreds) {
+            this.credentials = storedCreds;
+        }
+
         this.init();
     }
     
+    // ... tooltip methods ...
     createTooltip() {
         this.tooltip = document.createElement('div');
         this.tooltip.className = 'fixed z-50 hidden bg-gray-900 text-white text-xs rounded px-2 py-1 shadow-lg pointer-events-none whitespace-nowrap border border-gray-700';
@@ -49,7 +65,6 @@ class TodoList {
         let top = rect.top - tooltipRect.height - 8;
         let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
 
-        // Simple boundary check to prevent top overflow
         if (top < 0) {
              top = rect.bottom + 8;
         }
@@ -69,6 +84,8 @@ class TodoList {
         this.todoInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.addTodo();
         });
+        
+        this.initLogin();
         
         // Modal Event Listeners
         if (this.saveDueDateBtn) this.saveDueDateBtn.addEventListener('click', () => this.saveDueDate());
@@ -94,13 +111,52 @@ class TodoList {
         
         this.fetchTodos();
     }
+    
+    initLogin() {
+        if (this.loginForm) {
+            this.loginForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const username = this.usernameInput.value;
+                const password = this.passwordInput.value;
+                
+                // Create Basic Auth string
+                this.credentials = btoa(`${username}:${password}`);
+                
+                // Try to fetch todos to verify credentials
+                this.fetchTodos(true);
+            });
+        }
+    }
+
+    getHeaders() {
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+        if (this.credentials) {
+            headers['Authorization'] = `Basic ${this.credentials}`;
+        }
+        return headers;
+    }
+    
+    handleAuthError(response) {
+        if (response.status === 401) {
+            this.loginModal.classList.remove('hidden');
+            if (this.credentials) {
+                // If we had credentials but got 401, they are wrong
+                this.loginError.classList.remove('hidden');
+                this.credentials = null;
+                sessionStorage.removeItem('auth_creds');
+            }
+            return true;
+        }
+        return false;
+    }
 
     filterByDate(date) {
         this.filterDate = date;
         const dateString = date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' });
         const titleText = document.getElementById('todo-list-title-text');
         
-        // Update title and add reset button
         if (titleText) {
             titleText.innerHTML = `Todo List (${dateString}) 
                 <button id="reset-filter-btn" onclick="todoApp.resetFilter()" class="ml-2 text-red-400 hover:text-red-300 transition-colors inline-block align-middle" title="Reset Filter">
@@ -119,8 +175,7 @@ class TodoList {
         this.render();
     }
 
-    // ... (fetchTodos, addTodo, toggleTodo, archiveTodo, unarchiveTodo, deleteTodo, editTodo remain the same)
-
+    // ... openDueDateModal, closeDueDateModal, updateDueDateDisplay ...
     openDueDateModal(id) {
         this.currentTodoId = id;
         const todo = this.todos.find(t => t.id === id);
@@ -139,7 +194,6 @@ class TodoList {
             this.dueMinuteInput.value = date.getMinutes();
             this.clearDueDateBtn.classList.remove('hidden');
         } else {
-            // Default to today, next hour
             const now = new Date();
             this.dueDateInput.value = toLocalDateString(now);
             this.dueHourInput.value = (now.getHours() + 1) % 24;
@@ -160,7 +214,6 @@ class TodoList {
         if (!this.dueDateInput || !this.dueDateDisplay) return;
         const dateVal = this.dueDateInput.value;
         if (dateVal) {
-            // Use T00:00:00 to avoid timezone shifts when parsing YYYY-MM-DD
             const date = new Date(dateVal + 'T00:00:00');
             const options = { month: 'short', day: 'numeric', year: 'numeric' };
             this.dueDateDisplay.value = new Intl.DateTimeFormat('en-US', options).format(date);
@@ -175,7 +228,6 @@ class TodoList {
         const todo = this.todos.find(t => t.id === this.currentTodoId);
         if (todo) {
             const currentMeta = todo.meta_data || {};
-            // Create a copy and delete dueTime
             const updatedMeta = { ...currentMeta };
             delete updatedMeta.dueTime;
             
@@ -184,10 +236,12 @@ class TodoList {
             try {
                 const response = await fetch(`/api/todos/${this.currentTodoId}`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: this.getHeaders(),
                     body: JSON.stringify(updatedTodo)
                 });
                 
+                if (this.handleAuthError(response)) return;
+
                 if (response.ok) {
                     todo.meta_data = updatedMeta;
                     this.render();
@@ -227,10 +281,12 @@ class TodoList {
             try {
                 const response = await fetch(`/api/todos/${this.currentTodoId}`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: this.getHeaders(),
                     body: JSON.stringify(updatedTodo)
                 });
                 
+                if (this.handleAuthError(response)) return;
+
                 if (response.ok) {
                     todo.meta_data = updatedMeta;
                     this.render();
@@ -242,12 +298,23 @@ class TodoList {
         }
     }
 
-    async fetchTodos() {
+    async fetchTodos(isLoginAttempt = false) {
         try {
-            const response = await fetch('/api/todos');
+            const response = await fetch('/api/todos', {
+                headers: this.getHeaders()
+            });
+            
+            if (this.handleAuthError(response)) return;
+
             if (response.ok) {
                 this.todos = await response.json();
                 this.render();
+                
+                if (isLoginAttempt) {
+                    this.loginModal.classList.add('hidden');
+                    this.loginError.classList.add('hidden');
+                    sessionStorage.setItem('auth_creds', this.credentials);
+                }
             } else {
                 console.error('Failed to fetch todos');
             }
@@ -269,11 +336,11 @@ class TodoList {
         try {
             const response = await fetch('/api/todos', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: this.getHeaders(),
                 body: JSON.stringify(todo)
             });
+
+            if (this.handleAuthError(response)) return;
 
             if (response.ok) {
                 const newTodo = await response.json();
@@ -294,9 +361,11 @@ class TodoList {
             try {
                 const response = await fetch(`/api/todos/${id}`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: this.getHeaders(),
                     body: JSON.stringify(updatedTodo)
                 });
+                
+                if (this.handleAuthError(response)) return;
                 
                 if (response.ok) {
                     todo.completed = updatedTodo.completed;
@@ -315,9 +384,11 @@ class TodoList {
             try {
                 const response = await fetch(`/api/todos/${id}`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: this.getHeaders(),
                     body: JSON.stringify(updatedTodo)
                 });
+                
+                if (this.handleAuthError(response)) return;
                 
                 if (response.ok) {
                     todo.archived = true;
@@ -336,9 +407,11 @@ class TodoList {
             try {
                 const response = await fetch(`/api/todos/${id}`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: this.getHeaders(),
                     body: JSON.stringify(updatedTodo)
                 });
+                
+                if (this.handleAuthError(response)) return;
                 
                 if (response.ok) {
                     todo.archived = false;
@@ -355,8 +428,11 @@ class TodoList {
         
         try {
             const response = await fetch(`/api/todos/${id}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: this.getHeaders()
             });
+            
+            if (this.handleAuthError(response)) return;
             
             if (response.ok) {
                 this.todos = this.todos.filter(t => t.id !== id);
@@ -374,9 +450,11 @@ class TodoList {
             try {
                 const response = await fetch(`/api/todos/${id}`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: this.getHeaders(),
                     body: JSON.stringify(updatedTodo)
                 });
+                
+                if (this.handleAuthError(response)) return;
                 
                 if (response.ok) {
                     todo.text = updatedTodo.text;
@@ -388,6 +466,7 @@ class TodoList {
         }
     }
     
+    // ... scheduleAutoRefresh, render, createTodoElement, startEdit, updateStats, escapeHtml ...
     scheduleAutoRefresh(forceDelay = null) {
         if (this.autoRefreshTimeout) clearTimeout(this.autoRefreshTimeout);
         
@@ -397,12 +476,10 @@ class TodoList {
             const now = Date.now();
             const delays = [];
             
-            // Check midnight transition (Green -> Yellow)
             const midnight = new Date();
             midnight.setHours(24, 0, 0, 0);
             delays.push(midnight.getTime() - now);
 
-            // Check due time transitions (Yellow -> Red)
             this.todos.forEach(t => {
                 if (!t.archived && t.meta_data && typeof t.meta_data.dueTime === 'number') {
                     const dueTimeMs = t.meta_data.dueTime * 1000;
@@ -416,10 +493,8 @@ class TodoList {
             delay = Math.min(...delays);
         }
 
-        // Add a small buffer (50ms) to ensure time has definitely passed
         const finalDelay = Math.max(0, delay) + 50;
         
-        // Cap at ~24 hours to be safe with setTimeout limits
         if (finalDelay > 86400000) return;
 
         this.autoRefreshTimeout = setTimeout(() => {
@@ -429,7 +504,6 @@ class TodoList {
             if (!isEditing && !isModalOpen) {
                 this.render();
             } else {
-                // Retry soon if blocked
                 this.scheduleAutoRefresh(1000);
             }
         }, finalDelay);
@@ -440,7 +514,6 @@ class TodoList {
         
         let displayTodos = this.todos;
 
-        // Filter by date if a filter date is set
         if (this.filterDate) {
             displayTodos = displayTodos.filter(t => {
                 if (t.meta_data && typeof t.meta_data.dueTime === 'number') {
@@ -455,7 +528,7 @@ class TodoList {
             if (this.filterDate) {
                  this.todoList.innerHTML = `<div class="text-center text-gray-400 py-8">No tasks due on ${this.filterDate.toLocaleDateString()}</div>`;
                  this.todoStats.classList.add('hidden');
-                 this.emptyState.classList.add('hidden'); // Hide generic empty state
+                 this.emptyState.classList.add('hidden');
                  this.scheduleAutoRefresh();
                  return;
             } else {
@@ -477,7 +550,6 @@ class TodoList {
             this.todoList.appendChild(todoElement);
         });
 
-        // Archive Toggle Button
         if (archivedTodos.length > 0 || this.showArchived) {
             const toggleBtnContainer = document.createElement('div');
             toggleBtnContainer.className = 'flex justify-center pt-2 pb-2';
@@ -522,21 +594,19 @@ class TodoList {
         const div = document.createElement('div');
         div.className = `todo-item flex items-center space-x-3 p-3 bg-gray-700 rounded-lg ${todo.completed ? 'completed' : ''}`;
         
-        // Archive/Unarchive Button logic
         const archiveAction = todo.archived 
             ? `todoApp.unarchiveTodo(${todo.id})` 
             : `todoApp.archiveTodo(${todo.id})`;
         const archiveTitle = todo.archived ? 'Unarchive task' : 'Archive task';
         const archiveIcon = todo.archived 
-            ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>' // Upload/Restore
-            : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path>'; // Box/Archive
+            ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>'
+            : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path>';
 
-        // Check for due time in meta_data
         let iconColorClass = 'text-gray-400';
         let titleText = 'No due date';
 
         if (todo.meta_data && typeof todo.meta_data.dueTime === 'number') {
-            const dueTime = todo.meta_data.dueTime; // epoch seconds
+            const dueTime = todo.meta_data.dueTime;
             const dueDate = new Date(dueTime * 1000);
             const now = new Date();
             

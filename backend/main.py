@@ -1,10 +1,12 @@
 import os
 import yaml
+import secrets
 from contextlib import asynccontextmanager
 from typing import List
 
 import httpx
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, select
@@ -25,6 +27,31 @@ except FileNotFoundError:
 
 PORT = config.get("port", 8000)
 API_KEY = os.getenv("OPENWEATHER_API_KEY")
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin")
+
+security = HTTPBasic()
+
+def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
+    current_username_bytes = credentials.username.encode("utf8")
+    correct_username_bytes = ADMIN_USERNAME.encode("utf8")
+    is_correct_username = secrets.compare_digest(
+        current_username_bytes, correct_username_bytes
+    )
+    
+    current_password_bytes = credentials.password.encode("utf8")
+    correct_password_bytes = ADMIN_PASSWORD.encode("utf8")
+    is_correct_password = secrets.compare_digest(
+        current_password_bytes, correct_password_bytes
+    )
+    
+    if not (is_correct_username and is_correct_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -43,21 +70,21 @@ app.add_middleware(
 
 # API Routes
 @app.get("/api/todos", response_model=List[Todo])
-def read_todos(session: Session = Depends(get_session)):
+def read_todos(session: Session = Depends(get_session), username: str = Depends(get_current_username)):
     # Sort by ID desc (newest first) to match original behavior roughly
     # Original behavior was unshift() -> newest at top.
     todos = session.exec(select(Todo).order_by(Todo.id.desc())).all()
     return todos
 
 @app.post("/api/todos", response_model=Todo)
-def create_todo(todo: Todo, session: Session = Depends(get_session)):
+def create_todo(todo: Todo, session: Session = Depends(get_session), username: str = Depends(get_current_username)):
     session.add(todo)
     session.commit()
     session.refresh(todo)
     return todo
 
 @app.put("/api/todos/{todo_id}", response_model=Todo)
-def update_todo(todo_id: int, todo_update: Todo, session: Session = Depends(get_session)):
+def update_todo(todo_id: int, todo_update: Todo, session: Session = Depends(get_session), username: str = Depends(get_current_username)):
     todo = session.get(Todo, todo_id)
     if not todo:
         raise HTTPException(status_code=404, detail="Todo not found")
@@ -75,7 +102,7 @@ def update_todo(todo_id: int, todo_update: Todo, session: Session = Depends(get_
     return todo
 
 @app.delete("/api/todos/{todo_id}")
-def delete_todo(todo_id: int, session: Session = Depends(get_session)):
+def delete_todo(todo_id: int, session: Session = Depends(get_session), username: str = Depends(get_current_username)):
     todo = session.get(Todo, todo_id)
     if not todo:
         raise HTTPException(status_code=404, detail="Todo not found")

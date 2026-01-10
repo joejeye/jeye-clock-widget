@@ -73,9 +73,11 @@ This project can be deployed locally using Docker Compose or to the cloud using 
 ### Steps
 
 1.  **Configure Environment:**
-    Ensure `backend/.env` exists and contains your OpenWeatherMap API key:
+    Ensure `backend/.env` exists and contains your OpenWeatherMap API key and Admin credentials:
     ```env
     OPENWEATHER_API_KEY=your_api_key_here
+    ADMIN_USERNAME=your_username
+    ADMIN_PASSWORD=your_password
     ```
 
 2.  **Configure Settings (Optional):**
@@ -117,9 +119,12 @@ This guide assumes you have a Google Kubernetes Engine (Autopilot or Standard) c
     ```
 
 2.  **Configure Secrets:**
-    Create a Kubernetes Secret for the API key directly via the command line (avoiding base64 manual encoding).
+    Create a Kubernetes Secret for the API key and Admin credentials directly via the command line.
     ```bash
-    kubectl create secret generic disp-time-secrets --from-literal=OPENWEATHER_API_KEY=your_actual_api_key_here
+    kubectl create secret generic disp-time-secrets \
+    --from-literal=OPENWEATHER_API_KEY=your_actual_api_key_here \
+    --from-literal=ADMIN_USERNAME=your_username \
+    --from-literal=ADMIN_PASSWORD=your_password
     ```
 
 3.  **Deploy:**
