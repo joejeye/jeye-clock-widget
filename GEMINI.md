@@ -97,7 +97,7 @@ This project can be deployed locally using Docker Compose or to the cloud using 
 
 ## 2. Cloud Deployment (GKE)
 
-This guide assumes you have a Google Kubernetes Engine (Autopilot or Standard) cluster running.
+This guide assumes you have a Google Kubernetes Engine (Autopilot or Standard) cluster running and a domain managed by Cloudflare.
 
 ### Prerequisites
 1.  **Install Tools:** Ensure you have `gcloud`, `docker`, and `kubectl` installed.
@@ -111,15 +111,28 @@ This guide assumes you have a Google Kubernetes Engine (Autopilot or Standard) c
 
 ### Steps
 
-1.  **Build and Push Image:**
-    Build the Docker image and push it to Google Container Registry (GCR) or Artifact Registry.
+1.  **Reserve a Global Static IP:**
+    This IP will be used by the GKE Ingress (Global Load Balancer).
+    ```bash
+    gcloud compute addresses create disp-time-ip --global
+    gcloud compute addresses describe disp-time-ip --global --format="value(address)"
+    ```
+    *Note: Copy the IP address returned for the next step.*
+
+2.  **Configure Cloudflare DNS:**
+    *   Add an **A Record** in Cloudflare.
+    *   **Name:** `disp-time` (for `disp-time.jys-reality.win`).
+    *   **IPv4 address:** The static IP from Step 1.
+    *   **Proxy status:** Set to **DNS Only** (Grey Cloud) initially to allow certificate provisioning.
+
+3.  **Build and Push Image:**
     ```bash
     docker build -f backend/Dockerfile -t gcr.io/YOUR_PROJECT_ID/disp-time-backend:latest .
     docker push gcr.io/YOUR_PROJECT_ID/disp-time-backend:latest
     ```
 
-2.  **Configure Secrets:**
-    Create a Kubernetes Secret for the API key and Admin credentials directly via the command line.
+4.  **Configure Secrets:**
+    Create a Kubernetes Secret for the API key and Admin credentials.
     ```bash
     kubectl create secret generic disp-time-secrets \
     --from-literal=OPENWEATHER_API_KEY=your_actual_api_key_here \
@@ -127,21 +140,21 @@ This guide assumes you have a Google Kubernetes Engine (Autopilot or Standard) c
     --from-literal=ADMIN_PASSWORD=your_password
     ```
 
-3.  **Deploy:**
-    Update `k8s/deployment.yaml` with your image name (`gcr.io/YOUR_PROJECT_ID/...`). Then apply the manifests:
+5.  **Deploy Infrastructure:**
+    Apply the manifests to set up the persistent volume, service, SSL certificate, and Ingress routing.
     ```bash
     kubectl apply -f k8s/pvc.yaml
     kubectl apply -f k8s/deployment.yaml
     kubectl apply -f k8s/service.yaml
+    kubectl apply -f k8s/managed-cert.yaml
+    kubectl apply -f k8s/frontend-config.yaml
+    kubectl apply -f k8s/ingress.yaml
     ```
 
-4.  **Verify:**
-    Check the status of your pods and service:
-    ```bash
-    kubectl get pods
-    kubectl get services
-    ```
-    The `EXTERNAL-IP` of the `disp-time-service` is your application's public URL.
+6.  **Verify:**
+    *   Check cert status: `kubectl describe managedcertificate disp-time-cert` (Wait for `Status: Active`).
+    *   Check ingress: `kubectl get ingress disp-time-ingress`.
+    *   Access via: `https://disp-time.jys-reality.win`.
 
 # Configuration
 

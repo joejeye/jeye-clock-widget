@@ -1,0 +1,7 @@
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: disp-time-cert
+spec:
+  domains:
+    - disp-time.jys-reality.win

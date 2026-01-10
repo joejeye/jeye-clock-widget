@@ -3,10 +3,10 @@ kind: Service
 metadata:
   name: disp-time-service
 spec:
-  type: LoadBalancer
+  type: NodePort
   selector:
     app: disp-time-web
   ports:
     - protocol: TCP
-      port: 80        # External port (Browser hits this)
+      port: 80        # External port (Ingress talks to this)
       targetPort: 19563 # Container port

@@ -1,0 +1,10 @@
+apiVersion: networking.gke.io/v1beta1
+kind: FrontendConfig
+metadata:
+  name: disp-time-frontend-config
+spec:
+  sslPolicy:
+    name: gke-ingress-ssl-policy # Optional: You can create a stricter policy if needed, or remove this line
+  redirectToHttps:
+    enabled: true
+    responseCodeName: MOVED_PERMANENTLY_DEFAULT
