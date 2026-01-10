@@ -28,6 +28,13 @@ class TodoList {
         this.passwordInput = document.getElementById('password-input');
         this.loginError = document.getElementById('login-error');
         
+        // Menu Elements
+        this.menuBtn = document.getElementById('todo-menu-btn');
+        this.menuDropdown = document.getElementById('todo-menu-dropdown');
+        this.exportBtn = document.getElementById('export-todos-btn');
+        this.importBtn = document.getElementById('import-todos-btn');
+        this.importInput = document.getElementById('import-todos-input');
+
         this.currentTodoId = null;
         this.showArchived = false;
         this.filterDate = null;
@@ -86,6 +93,7 @@ class TodoList {
         });
         
         this.initLogin();
+        this.initMenu();
         
         // Modal Event Listeners
         if (this.saveDueDateBtn) this.saveDueDateBtn.addEventListener('click', () => this.saveDueDate());
@@ -704,6 +712,124 @@ class TodoList {
         
         this.completedCount.textContent = completed;
         this.totalCount.textContent = total;
+    }
+
+    initMenu() {
+        if (this.menuBtn) {
+            this.menuBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.toggleMenu();
+            });
+        }
+
+        document.addEventListener('click', (e) => {
+            if (this.menuDropdown && !this.menuDropdown.classList.contains('hidden') && !this.menuDropdown.contains(e.target) && e.target !== this.menuBtn) {
+                this.menuDropdown.classList.add('hidden');
+            }
+        });
+
+        if (this.exportBtn) {
+            this.exportBtn.addEventListener('click', () => {
+                this.exportTodos();
+                this.menuDropdown.classList.add('hidden');
+            });
+        }
+
+        if (this.importBtn) {
+            this.importBtn.addEventListener('click', () => {
+                this.importInput.click();
+                this.menuDropdown.classList.add('hidden');
+            });
+        }
+
+        if (this.importInput) {
+            this.importInput.addEventListener('change', (e) => this.handleImportFile(e));
+        }
+    }
+
+    toggleMenu() {
+        if (this.menuDropdown) {
+            this.menuDropdown.classList.toggle('hidden');
+        }
+    }
+
+    exportTodos() {
+        if (!this.todos || this.todos.length === 0) {
+            alert('No todos to export!');
+            return;
+        }
+        
+        const dataStr = JSON.stringify(this.todos, null, 2);
+        const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+        
+        const exportFileDefaultName = `todo_backup_${new Date().toISOString().slice(0,10)}.json`;
+        
+        const linkElement = document.createElement('a');
+        linkElement.setAttribute('href', dataUri);
+        linkElement.setAttribute('download', exportFileDefaultName);
+        linkElement.click();
+    }
+
+    handleImportFile(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const importedTodos = JSON.parse(e.target.result);
+                if (Array.isArray(importedTodos)) {
+                    if (confirm(`Found ${importedTodos.length} tasks in file. Import them now? This will add them to your current list.`)) {
+                        this.processImport(importedTodos);
+                    }
+                } else {
+                    alert('Invalid file format: Expected a list of tasks.');
+                }
+            } catch (error) {
+                console.error('Error parsing JSON:', error);
+                alert('Error parsing JSON file.');
+            }
+            // Reset input so same file can be selected again if needed
+            event.target.value = '';
+        };
+        reader.readAsText(file);
+    }
+
+    async processImport(todos) {
+        // Reverse if they seem to be in descending order (ID based) so they get created in correct chronological order
+        // Assuming the export was from this app, it's sorted Newest -> Oldest.
+        // We want to create Oldest first so it gets a lower ID.
+        const todosToImport = [...todos].reverse();
+        
+        let count = 0;
+        for (const todo of todosToImport) {
+            // Sanitize and prepare object
+            const newTodo = {
+                text: todo.text || 'Untitled Task',
+                completed: !!todo.completed,
+                archived: !!todo.archived,
+                meta_data: todo.meta_data || null,
+                // If backend supports createdAt, we can send it.
+                createdAt: todo.createdAt 
+            };
+            
+            try {
+                const response = await fetch('/api/todos', {
+                    method: 'POST',
+                    headers: this.getHeaders(),
+                    body: JSON.stringify(newTodo)
+                });
+                
+                if (response.ok) {
+                    count++;
+                }
+            } catch (error) {
+                console.error('Error importing todo:', error);
+            }
+        }
+        
+        alert(`Successfully imported ${count} tasks.`);
+        this.fetchTodos();
     }
 
     escapeHtml(text) {

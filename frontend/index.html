@@ -83,13 +83,32 @@
 
             <!-- Todo List Section -->
             <div class="bg-gray-800 rounded-lg p-6 shadow-lg">
-                <div class="flex items-center justify-center mb-6">
+                <div class="flex items-center justify-center mb-6 relative">
                     <h2 id="todo-list-title"
                         class="text-2xl font-bold text-center bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-300">
                         <span id="todo-list-title-text">Todo List</span>
                     </h2>
-
+                    
+                    <div class="absolute right-0">
+                        <button id="todo-menu-btn" class="text-gray-400 hover:text-white p-1 rounded-full hover:bg-gray-700 transition-colors focus:outline-none" title="Options">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
+                            </svg>
+                        </button>
+                        <!-- Dropdown Menu -->
+                        <div id="todo-menu-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-gray-700 rounded-md shadow-lg z-50 border border-gray-600">
+                            <div class="py-1">
+                                <button id="export-todos-btn" class="block w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-600 transition-colors">
+                                    Export to JSON
+                                </button>
+                                <button id="import-todos-btn" class="block w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-600 transition-colors">
+                                    Import from JSON
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+                <input type="file" id="import-todos-input" accept=".json" class="hidden">
 
                 <!-- Add new todo input -->
                 <div class="mb-6">
