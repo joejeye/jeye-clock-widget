@@ -1,3 +1,4 @@
+import logging
 import os
 import yaml
 import secrets
@@ -17,6 +18,10 @@ from database import create_db_and_tables, get_session
 
 # Load env
 load_dotenv()
+
+# Logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Load config
 try:
@@ -123,12 +128,17 @@ async def get_weather(lat: float, lon: float, units: str = "metric"):
         "units": units
     }
     
-    async with httpx.AsyncClient() as client:
-        resp = await client.get(url, params=params)
-        if resp.status_code != 200:
-             # Pass through error or generic
-             raise HTTPException(status_code=resp.status_code, detail="Weather API Error")
-        return resp.json()
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(url, params=params)
+            resp.raise_for_status()
+            return resp.json()
+    except httpx.RequestError as exc:
+        logger.error(f"An error occurred while requesting {exc.request.url!r}: {exc}")
+        raise HTTPException(status_code=503, detail=f"Weather Service Unreachable: {exc}")
+    except httpx.HTTPStatusError as exc:
+        logger.error(f"Error response {exc.response.status_code} while requesting {exc.request.url!r}")
+        raise HTTPException(status_code=exc.response.status_code, detail="Weather API Error")
 
 # Mount static files
 # Priority: /app/static (Docker), ../frontend (Local dev)
