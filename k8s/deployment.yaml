@@ -27,6 +27,16 @@ spec:
             secretKeyRef:
               name: disp-time-secrets
               key: OPENWEATHER_API_KEY
+        - name: ADMIN_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: disp-time-secrets
+              key: ADMIN_USERNAME
+        - name: ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: disp-time-secrets
+              key: ADMIN_PASSWORD
         volumeMounts:
         - mountPath: "/data"
           name: data-volume
