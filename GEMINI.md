@@ -134,7 +134,22 @@ This guide assumes you have a Google Kubernetes Engine (Autopilot or Standard) c
     gcloud compute routers nats create disp-time-nat --router disp-time-router --region YOUR_REGION --auto-allocate-nat-external-ip --nat-all-subnet-ip-ranges
     ```
 
-#### Redeployment (Every time you update the app)
+#### Redeployment
+
+**Option A: Automated Script (Recommended)**
+
+Run one of the following scripts to automatically build, push, and redeploy:
+
+*   **macOS / Linux:**
+    ```bash
+    ./deploy.sh
+    ```
+*   **Windows (PowerShell):**
+    ```powershell
+    .\deploy.ps1
+    ```
+
+**Option B: Manual Steps**
 
 4.  **Build and Push Image:**
     ```bash
