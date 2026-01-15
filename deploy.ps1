@@ -7,7 +7,7 @@ $Deployment = "disp-time-backend"
 Write-Host "🚀 Starting deployment..." -ForegroundColor Cyan
 
 # 1. Build
-Write-Host "📦 Building image (linux/amd64)..." -ForegroundColor Yellow
+Write-Host "📦 Building image for linux/amd64..." -ForegroundColor Yellow
 # We specify platform to ensure it runs on standard cloud servers
 docker build --platform linux/amd64 -t $Image -f backend/Dockerfile .
 
