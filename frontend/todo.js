@@ -520,7 +520,29 @@ class TodoList {
     render() {
         this.todoList.innerHTML = '';
         
-        let displayTodos = this.todos;
+        let displayTodos = [...this.todos];
+
+        displayTodos.sort((a, b) => {
+            const aDue = (a.meta_data && typeof a.meta_data.dueTime === 'number') ? a.meta_data.dueTime : Infinity;
+            const bDue = (b.meta_data && typeof b.meta_data.dueTime === 'number') ? b.meta_data.dueTime : Infinity;
+
+            if (aDue !== bDue) {
+                return aDue - bDue;
+            }
+
+            const aCreated = a.createdAt || '';
+            const bCreated = b.createdAt || '';
+            
+            if (aCreated !== bCreated) {
+                return aCreated.localeCompare(bCreated);
+            }
+            
+            const aText = a.text || '';
+            const bText = b.text || '';
+            if (aText < bText) return -1;
+            if (aText > bText) return 1;
+            return 0;
+        });
 
         if (this.filterDate) {
             displayTodos = displayTodos.filter(t => {
