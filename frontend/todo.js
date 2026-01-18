@@ -538,7 +538,8 @@ class TodoList {
                 if (aCreated > bCreated) return 1;
             }
 
-            const aText = a.text || '';            const bText = b.text || '';
+            const aText = a.text || '';            
+            const bText = b.text || '';
             if (aText < bText) return -1;
             if (aText > bText) return 1;
             return 0;

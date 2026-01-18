@@ -9,7 +9,7 @@ Write-Host "🚀 Starting deployment..." -ForegroundColor Cyan
 # 1. Build
 Write-Host "📦 Building image for linux/amd64..." -ForegroundColor Yellow
 # We specify platform to ensure it runs on standard cloud servers
-docker build --platform linux/amd64 -t $Image -f backend/Dockerfile .
+docker build --no-cache --platform linux/amd64 -t $Image -f backend/Dockerfile .
 
 # 2. Push
 Write-Host "⬆️  Pushing image to registry..." -ForegroundColor Yellow
@@ -48,5 +48,8 @@ kubectl apply -f k8s/
 # 4. Restart Deployment
 Write-Host "🔄 Restarting '$Deployment' to pick up the new image..." -ForegroundColor Yellow
 kubectl rollout restart deployment/$Deployment
+
+Write-Host "⏳ Waiting for rollout to complete..." -ForegroundColor Cyan
+kubectl rollout status deployment/$Deployment
 
 Write-Host "✅ Deployment pipeline finished successfully!" -ForegroundColor Green

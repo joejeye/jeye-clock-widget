@@ -17,6 +17,7 @@ spec:
       containers:
       - name: backend
         image: gcr.io/mercurial-cairn-466220-b5/disp-time-backend:latest # REPLACE WITH YOUR IMAGE URL
+        imagePullPolicy: Always
         ports:
         - containerPort: 19563
         env:
