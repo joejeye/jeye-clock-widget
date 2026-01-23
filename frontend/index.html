@@ -197,6 +197,17 @@
             
             <div class="space-y-4">
                 <div>
+                    <label class="block text-gray-400 text-sm font-medium mb-1">Importance</label>
+                    <select id="importance-input" class="w-full bg-gray-700 text-white border border-gray-600 rounded px-3 py-2 focus:outline-none focus:border-blue-500">
+                        <option value="trivial">Trivial</option>
+                        <option value="minor">Minor</option>
+                        <option value="moderate">Moderate</option>
+                        <option value="major">Major</option>
+                        <option value="critical">Critical</option>
+                    </select>
+                </div>
+
+                <div>
                     <label class="block text-gray-400 text-sm font-medium mb-1">Date</label>
                     <div class="relative">
                         <input type="text" id="due-date-display" readonly 

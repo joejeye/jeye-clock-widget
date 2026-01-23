@@ -5,10 +5,10 @@ This project is a web application that displays the current time, a persistent t
 ## Key Features
 
 *   **Live Clock:** Displays the current time and date, updated every second.
-*   **Todo List:** A persistent todo list stored in a SQLite database via a REST API. Supports exporting and importing tasks as JSON files.
+*   **Todo List:** A persistent todo list stored in a SQLite database via a REST API. Supports exporting and importing tasks as JSON files. Tasks feature five importance levels (Trivial to Critical) with corresponding color coding.
 *   **Weather Display:** Shows the current weather conditions and city name based on the user's geolocation. Weather data is proxied through the backend (OpenWeatherMap) to protect API keys, while the city name is fetched directly from the Nominatim OpenStreetMap API.
 *   **Pop-up Calendar:** Interactive monthly calendar view, accessible by clicking the time or date display.
-*   **Due Dates & Filtering:** Assign due dates/times to tasks. Clock icons indicate status (future, today, overdue). Filter tasks by clicking a date on the calendar.
+*   **Due Dates, Importance & Sorting:** Assign due dates/times and importance levels to tasks. Clock icons indicate status (future, today, overdue). Tasks are automatically sorted by importance (descending), then by due time, then by text. Filter tasks by clicking a date on the calendar.
 
 # System Architecture
 

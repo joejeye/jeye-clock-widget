@@ -13,6 +13,7 @@ class TodoList {
         
         // Due Date Modal Elements
         this.dueDateModal = document.getElementById('due-date-modal');
+        this.importanceInput = document.getElementById('importance-input');
         this.dueDateInput = document.getElementById('due-date-input');
         this.dueDateDisplay = document.getElementById('due-date-display');
         this.dueHourInput = document.getElementById('due-hour-input');
@@ -209,6 +210,12 @@ class TodoList {
             this.clearDueDateBtn.classList.add('hidden');
         }
         
+        if (this.importanceInput) {
+            this.importanceInput.value = (todo && todo.meta_data && todo.meta_data.importance) 
+                ? todo.meta_data.importance 
+                : 'trivial';
+        }
+        
         this.updateDueDateDisplay();
         this.dueDateModal.classList.remove('hidden');
     }
@@ -279,11 +286,12 @@ class TodoList {
         dateTime.setMinutes(minuteVal);
         
         const epochSeconds = Math.floor(dateTime.getTime() / 1000);
+        const importanceVal = this.importanceInput ? this.importanceInput.value : 'trivial';
         
         const todo = this.todos.find(t => t.id === this.currentTodoId);
         if (todo) {
             const currentMeta = todo.meta_data || {};
-            const updatedMeta = { ...currentMeta, dueTime: epochSeconds };
+            const updatedMeta = { ...currentMeta, dueTime: epochSeconds, importance: importanceVal };
             const updatedTodo = { ...todo, meta_data: updatedMeta };
             
             try {
@@ -522,20 +530,30 @@ class TodoList {
         
         let displayTodos = [...this.todos];
 
+        const importanceValues = {
+            'critical': 5,
+            'major': 4,
+            'moderate': 3,
+            'minor': 2,
+            'trivial': 1
+        };
+
         displayTodos.sort((a, b) => {
+            const aImpStr = (a.meta_data && a.meta_data.importance) ? a.meta_data.importance : 'trivial';
+            const bImpStr = (b.meta_data && b.meta_data.importance) ? b.meta_data.importance : 'trivial';
+            
+            const aImp = importanceValues[aImpStr] || 1;
+            const bImp = importanceValues[bImpStr] || 1;
+            
+            if (aImp !== bImp) {
+                return bImp - aImp; // Descending
+            }
+
             const aDue = (a.meta_data && typeof a.meta_data.dueTime === 'number') ? a.meta_data.dueTime : Infinity;
             const bDue = (b.meta_data && typeof b.meta_data.dueTime === 'number') ? b.meta_data.dueTime : Infinity;
 
             if (aDue !== bDue) {
                 return aDue - bDue;
-            }
-
-            const aCreated = a.createdAt || '';
-            const bCreated = b.createdAt || '';
-
-            if (aCreated !== bCreated) {
-                if (aCreated < bCreated) return -1;
-                if (aCreated > bCreated) return 1;
             }
 
             const aText = a.text || '';            
@@ -653,6 +671,16 @@ class TodoList {
             }
         }
             
+        const importance = (todo.meta_data && todo.meta_data.importance) ? todo.meta_data.importance : 'trivial';
+        const importanceColors = {
+            'trivial': 'text-white',
+            'minor': 'text-red-200',
+            'moderate': 'text-red-300',
+            'major': 'text-red-400',
+            'critical': 'text-red-500'
+        };
+        const textColorClass = importanceColors[importance] || 'text-white';
+
         const clockIconHtml = `
             <div class="cursor-pointer hover:bg-gray-600 rounded p-1 transition-colors" 
                  onclick="todoApp.openDueDateModal(${todo.id})" 
@@ -674,7 +702,7 @@ class TodoList {
             >
             ${clockIconHtml}
             <span 
-                class="todo-text flex-1 cursor-pointer" 
+                class="todo-text flex-1 cursor-pointer ${textColorClass}" 
                 onclick="todoApp.startEdit(${todo.id}, this)"
             >
                 ${this.escapeHtml(todo.text)}
