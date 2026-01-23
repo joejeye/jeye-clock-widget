@@ -196,17 +196,16 @@ class TodoList {
             return `${year}-${month}-${day}`;
         };
 
-        if (todo && todo.meta_data && typeof todo.meta_data.dueTime === 'number') {
+        if (todo && todo.meta_data && typeof todo.meta_data.dueTime === 'number' && !isNaN(todo.meta_data.dueTime)) {
             const date = new Date(todo.meta_data.dueTime * 1000);
             this.dueDateInput.value = toLocalDateString(date);
             this.dueHourInput.value = date.getHours();
             this.dueMinuteInput.value = date.getMinutes();
             this.clearDueDateBtn.classList.remove('hidden');
         } else {
-            const now = new Date();
-            this.dueDateInput.value = toLocalDateString(now);
-            this.dueHourInput.value = (now.getHours() + 1) % 24;
-            this.dueMinuteInput.value = 0;
+            this.dueDateInput.value = '';
+            this.dueHourInput.value = '';
+            this.dueMinuteInput.value = '';
             this.clearDueDateBtn.classList.add('hidden');
         }
         
@@ -272,45 +271,53 @@ class TodoList {
         if (this.currentTodoId === null) return;
         
         const dateVal = this.dueDateInput.value;
-        const hourVal = parseInt(this.dueHourInput.value);
-        const minuteVal = parseInt(this.dueMinuteInput.value);
+        const hourStr = this.dueHourInput.value;
+        const minuteStr = this.dueMinuteInput.value;
         
-        if (!dateVal || isNaN(hourVal) || isNaN(minuteVal) || 
-            hourVal < 0 || hourVal > 23 || minuteVal < 0 || minuteVal > 59) {
-            alert('Please enter a valid date and time.');
-            return;
+        const importanceVal = this.importanceInput ? this.importanceInput.value : 'trivial';
+        const todo = this.todos.find(t => t.id === this.currentTodoId);
+        if (!todo) return;
+
+        const currentMeta = todo.meta_data || {};
+        const updatedMeta = { ...currentMeta, importance: importanceVal };
+        
+        // Check if all time fields are empty
+        if (!dateVal && hourStr === '' && minuteStr === '') {
+            delete updatedMeta.dueTime;
+        } else {
+            const hourVal = parseInt(hourStr);
+            const minuteVal = parseInt(minuteStr);
+            
+            if (!dateVal || isNaN(hourVal) || isNaN(minuteVal) || 
+                hourVal < 0 || hourVal > 23 || minuteVal < 0 || minuteVal > 59) {
+                alert('Please enter a valid date and time, or leave all three blank to clear the due date.');
+                return;
+            }
+            
+            const dateTime = new Date(`${dateVal}T00:00:00`);
+            dateTime.setHours(hourVal);
+            dateTime.setMinutes(minuteVal);
+            updatedMeta.dueTime = Math.floor(dateTime.getTime() / 1000);
         }
         
-        const dateTime = new Date(`${dateVal}T00:00:00`);
-        dateTime.setHours(hourVal);
-        dateTime.setMinutes(minuteVal);
+        const updatedTodo = { ...todo, meta_data: updatedMeta };
         
-        const epochSeconds = Math.floor(dateTime.getTime() / 1000);
-        const importanceVal = this.importanceInput ? this.importanceInput.value : 'trivial';
-        
-        const todo = this.todos.find(t => t.id === this.currentTodoId);
-        if (todo) {
-            const currentMeta = todo.meta_data || {};
-            const updatedMeta = { ...currentMeta, dueTime: epochSeconds, importance: importanceVal };
-            const updatedTodo = { ...todo, meta_data: updatedMeta };
+        try {
+            const response = await fetch(`/api/todos/${this.currentTodoId}`, {
+                method: 'PUT',
+                headers: this.getHeaders(),
+                body: JSON.stringify(updatedTodo)
+            });
             
-            try {
-                const response = await fetch(`/api/todos/${this.currentTodoId}`, {
-                    method: 'PUT',
-                    headers: this.getHeaders(),
-                    body: JSON.stringify(updatedTodo)
-                });
-                
-                if (this.handleAuthError(response)) return;
+            if (this.handleAuthError(response)) return;
 
-                if (response.ok) {
-                    todo.meta_data = updatedMeta;
-                    this.render();
-                    this.closeDueDateModal();
-                }
-            } catch (error) {
-                console.error('Error saving due date:', error);
+            if (response.ok) {
+                todo.meta_data = updatedMeta;
+                this.render();
+                this.closeDueDateModal();
             }
+        } catch (error) {
+            console.error('Error saving due date:', error);
         }
     }
 
