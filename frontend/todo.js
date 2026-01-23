@@ -239,6 +239,8 @@ class TodoList {
     async clearDueDate() {
         if (this.currentTodoId === null) return;
         
+        if (!confirm('Are you sure you want to clear the due date?')) return;
+        
         const todo = this.todos.find(t => t.id === this.currentTodoId);
         if (todo) {
             const currentMeta = todo.meta_data || {};
