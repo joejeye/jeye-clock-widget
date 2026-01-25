@@ -51,7 +51,7 @@ flowchart TD
 *   **Technology:** Python, FastAPI, SQLModel (SQLAlchemy).
 *   **Responsibilities:**
     *   **Static File Serving:** Serves the frontend assets (`index.html`, `js`, `css`) from the root URL.
-    *   **Todo API:** Provides CRUD endpoints for managing tasks.
+    *   **Todo API:** Provides CRUD endpoints for managing tasks. Also includes a read-only [SQL Query API](API_QUERY.md) for data inspection.
     *   **Weather Proxy:** Proxies requests to OpenWeatherMap to hide the API key from the client.
     *   **Database Management:** Manages the SQLite database connection and schema.
 

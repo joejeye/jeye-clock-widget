@@ -4,8 +4,11 @@ import yaml
 import secrets
 from contextlib import asynccontextmanager
 from typing import List
+import sqlite3
+from pathlib import Path
 
 import httpx
+from pydantic import BaseModel
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
@@ -139,6 +142,35 @@ async def get_weather(lat: float, lon: float, units: str = "metric"):
     except httpx.HTTPStatusError as exc:
         logger.error(f"Error response {exc.response.status_code} while requesting {exc.request.url!r}")
         raise HTTPException(status_code=exc.response.status_code, detail="Weather API Error")
+
+class SQLQuery(BaseModel):
+    query: str
+
+@app.post("/api/query")
+def execute_readonly_query(sql_query: SQLQuery, username: str = Depends(get_current_username)):
+    """
+    Executes a read-only SQL query against the database.
+    """
+    db_path = os.getenv("DB_PATH", "database.db")
+    # Convert to URI
+    # Use absolute path to ensure URI works correctly
+    abs_path = os.path.abspath(db_path)
+    # Create a read-only URI
+    db_uri = Path(abs_path).as_uri() + "?mode=ro"
+
+    try:
+        # uri=True allows passing parameters like mode=ro
+        with sqlite3.connect(db_uri, uri=True) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute(sql_query.query)
+            result = cursor.fetchall()
+            return [dict(row) for row in result]
+    except sqlite3.OperationalError as e:
+        raise HTTPException(status_code=400, detail=f"Database error: {e}")
+    except Exception as e:
+        logger.error(f"Query execution failed: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
 
 # Mount static files
 # Priority: /app/static (Docker), ../frontend (Local dev)
