@@ -20,15 +20,7 @@ The endpoint expects a JSON object containing a `query` string.
 
 ## Database Schema
 
-The database table schema (SQLModel) is defined in [backend/models.py](backend/models.py). 
-
-The primary table is named `todo`. Key columns include:
-- `id` (Integer, PK)
-- `text` (String)
-- `completed` (Boolean)
-- `archived` (Boolean)
-- `createdAt` (String/ISO DateTime)
-- `meta_data` (JSON/Dictionary)
+For full details on the database schema, including the `todo` table structure and `meta_data` JSON fields, please refer to [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md).
 
 ## Example Usage (curl)
 

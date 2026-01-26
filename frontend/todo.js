@@ -382,7 +382,22 @@ class TodoList {
     async toggleTodo(id) {
         const todo = this.todos.find(t => t.id === id);
         if (todo) {
-            const updatedTodo = { ...todo, completed: !todo.completed };
+            const isCompleted = !todo.completed;
+            const currentMeta = todo.meta_data || {};
+            let updatedMeta = { ...currentMeta };
+
+            if (isCompleted) {
+                updatedMeta.completedAt = Math.floor(Date.now() / 1000);
+            } else {
+                delete updatedMeta.completedAt;
+            }
+
+            const updatedTodo = { 
+                ...todo, 
+                completed: isCompleted,
+                meta_data: updatedMeta
+            };
+
             try {
                 const response = await fetch(`/api/todos/${id}`, {
                     method: 'PUT',
@@ -394,6 +409,7 @@ class TodoList {
                 
                 if (response.ok) {
                     todo.completed = updatedTodo.completed;
+                    todo.meta_data = updatedTodo.meta_data;
                     this.render();
                 }
             } catch (error) {
