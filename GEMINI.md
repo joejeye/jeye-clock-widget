@@ -62,9 +62,53 @@ flowchart TD
 
 # Deployment
 
-This project can be deployed locally using Docker Compose or to the cloud using Google Kubernetes Engine (GKE).
+This project can be run locally (with or without Docker) or deployed to the cloud using Google Kubernetes Engine (GKE).
 
-## 1. Local Deployment (Docker Compose)
+## 1. Local Development (Without Docker)
+
+### Prerequisites
+
+*   Python >= 3.9
+*   [`uv`](https://docs.astral.sh/uv/) (recommended) or `pip`
+
+### Steps
+
+1.  **Configure Environment:**
+    Ensure `backend/.env` exists and contains your OpenWeatherMap API key and Admin credentials:
+    ```env
+    OPENWEATHER_API_KEY=your_api_key_here
+    ADMIN_USERNAME=your_username
+    ADMIN_PASSWORD=your_password
+    ```
+
+2.  **Install Dependencies:**
+    From the `backend/` directory:
+    ```bash
+    cd backend
+    uv sync
+    ```
+    Or using pip:
+    ```bash
+    cd backend
+    pip install fastapi uvicorn python-dotenv sqlmodel httpx PyYAML python-multipart
+    ```
+
+3.  **Run the Server:**
+    From the `backend/` directory:
+    ```bash
+    uv run python main.py
+    ```
+    Or if using pip:
+    ```bash
+    python main.py
+    ```
+    The server reads the port from `backend/config.yaml` (default: 19563).
+
+4.  **Access:**
+    Open your browser and navigate to: `http://localhost:19563`.
+    The backend serves the frontend static files directly, so no separate frontend server is needed.
+
+## 2. Local Deployment (Docker Compose)
 
 ### Prerequisites
 
@@ -95,7 +139,7 @@ This project can be deployed locally using Docker Compose or to the cloud using 
 4.  **Access:**
     Open your browser and navigate to: `http://localhost:19563` (or the port you configured).
 
-## 2. Cloud Deployment (GKE)
+## 3. Cloud Deployment (GKE)
 
 This guide assumes you have a Google Kubernetes Engine (Autopilot or Standard) cluster running and a domain managed by Cloudflare.
 

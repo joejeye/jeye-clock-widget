@@ -173,15 +173,17 @@ def execute_readonly_query(sql_query: SQLQuery, username: str = Depends(get_curr
         raise HTTPException(status_code=400, detail=str(e))
 
 # Mount static files
-# Priority: /app/static (Docker), ../frontend (Local dev)
-static_dir = "../frontend"
-if os.path.exists("static"): 
-    static_dir = "static" # Docker specific copy
+# Priority: ../frontend (Local dev), static/ (Docker)
+if os.path.exists("../frontend"):
+    static_dir = "../frontend"
+elif os.path.exists("static"):
+    static_dir = "static"
+else:
+    static_dir = None
+    print("Warning: Static directory not found at ../frontend or static/")
 
-if not os.path.exists(static_dir) and not os.path.exists("static"):
-     print(f"Warning: Static directory not found at {static_dir}")
-
-app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
+if static_dir:
+    app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
 
 if __name__ == "__main__":
     import uvicorn
