@@ -123,7 +123,7 @@ async def get_weather(lat: float, lon: float, units: str = "metric"):
     if not API_KEY:
         raise HTTPException(status_code=500, detail="API Key not configured")
     
-    url = "https://api.openweathermap.org/data/3.0/onecall"
+    url = "https://api.openweathermap.org/data/4.0/onecall/current"
     params = {
         "lat": lat,
         "lon": lon,

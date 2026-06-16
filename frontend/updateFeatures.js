@@ -88,11 +88,12 @@ function getWeather() {
                 Promise.all([weatherPromise, cityPromise])
                     .then(([data, cityName]) => {
                         // console.log(data);
-                        const temp = Math.round(data.current.temp);
-                        const feelsLikeTemp = Math.round(data.current.feels_like);
-                        const humidity = data.current.humidity;
-                        const weatherDescription = data.current.weather[0].description;
-                        const weatherIcon = data.current.weather[0].icon;
+                        const current = data.data[0];
+                        const temp = Math.round(current.temp);
+                        const feelsLikeTemp = Math.round(current.feels_like);
+                        const humidity = current.humidity;
+                        const weatherDescription = current.weather[0].description;
+                        const weatherIcon = current.weather[0].icon;
                         const iconUrl = selectIcon(weatherIcon)
                         // console.log('Selected icon URL:', iconUrl);
                         const sideLen = 40;

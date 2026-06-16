@@ -1,1 +1,1 @@
-See [GEMINI.md](./GEMINI.md)
+See [AGENTS.md](./AGENTS.md)
