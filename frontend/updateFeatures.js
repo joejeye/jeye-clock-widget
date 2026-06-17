@@ -89,6 +89,8 @@ function getWeather() {
                     .then(([data, cityName]) => {
                         // console.log(data);
                         const current = data.data[0];
+                        const isCached = Boolean(data.cached);
+                        const freshnessLabel = isCached ? 'Cached' : 'Live';
                         const temp = Math.round(current.temp);
                         const feelsLikeTemp = Math.round(current.feels_like);
                         const humidity = current.humidity;
@@ -120,6 +122,7 @@ function getWeather() {
                                 </div>
                                 <div style="text-transform: capitalize;">${weatherDescription}</div>
                                 <div>${cityName}</div>
+                                <div style="font-size: 0.75em; opacity: 0.75;">${freshnessLabel}</div>
                             </div>
                         `;
                     })
