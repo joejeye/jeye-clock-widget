@@ -89,8 +89,6 @@ function getWeather() {
                     .then(([data, cityName]) => {
                         // console.log(data);
                         const current = data.data[0];
-                        const isCached = Boolean(data.cached);
-                        const freshnessLabel = isCached ? 'Cached' : 'Live';
                         const temp = Math.round(current.temp);
                         const feelsLikeTemp = Math.round(current.feels_like);
                         const humidity = current.humidity;
@@ -99,6 +97,20 @@ function getWeather() {
                         const iconUrl = selectIcon(weatherIcon)
                         // console.log('Selected icon URL:', iconUrl);
                         const sideLen = 40;
+
+                        const TTL_SECONDS = 5 * 60;
+                        const r = 6;
+                        const circumference = 2 * Math.PI * r;
+                        const nextRefreshMs = new Date(data.next_refresh_at).getTime();
+                        const elapsedSeconds = Math.max(0, TTL_SECONDS - (nextRefreshMs - Date.now()) / 1000);
+
+                        if (!document.getElementById('weather-countdown-style')) {
+                            const style = document.createElement('style');
+                            style.id = 'weather-countdown-style';
+                            style.textContent = `@keyframes weather-countdown { from { stroke-dashoffset: 0; } to { stroke-dashoffset: ${circumference.toFixed(2)}; } }`;
+                            document.head.appendChild(style);
+                        }
+
                         weatherInfoDiv.innerHTML = `
                             <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
                                 <div style="display: flex; align-items: center; gap: 8px;">
@@ -122,7 +134,13 @@ function getWeather() {
                                 </div>
                                 <div style="text-transform: capitalize;">${weatherDescription}</div>
                                 <div>${cityName}</div>
-                                <div style="font-size: 0.75em; opacity: 0.75;">${freshnessLabel}</div>
+                                <svg width="24" height="24" viewBox="0 0 24 24" style="opacity: 0.75;">
+                                    <circle cx="12" cy="12" r="${r}" fill="none" stroke="currentColor" stroke-opacity="0.3" stroke-width="12"/>
+                                    <circle cx="12" cy="12" r="${r}" fill="none" stroke="currentColor" stroke-width="12"
+                                        stroke-dasharray="${circumference.toFixed(2)}"
+                                        transform="rotate(-90 12 12)"
+                                        style="animation: weather-countdown ${TTL_SECONDS}s linear -${elapsedSeconds.toFixed(1)}s forwards;"/>
+                                </svg>
                             </div>
                         `;
                     })

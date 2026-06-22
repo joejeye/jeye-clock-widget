@@ -4,7 +4,7 @@ import yaml
 import secrets
 import asyncio
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any, Tuple
 import sqlite3
 from pathlib import Path
@@ -70,14 +70,17 @@ async def _get_weather_lock(cache_key: Tuple[float, float, str]) -> asyncio.Lock
         return lock
 
 
-def _build_weather_response(payload: Any, cached: bool) -> Any:
+def _build_weather_response(payload: Any, cached: bool, cached_at: datetime) -> Any:
     """
     Return upstream weather payload with backend cache metadata.
-    If payload is a dict (OpenWeather response), inject a top-level `cached` flag.
+    If payload is a dict (OpenWeather response), inject `cached` flag and
+    `next_refresh_at` (UTC ISO string) indicating when the cache entry expires.
     """
     if isinstance(payload, dict):
         response_payload = dict(payload)
         response_payload["cached"] = cached
+        next_refresh_at = cached_at + timedelta(seconds=WEATHER_CACHE_TTL_SECONDS)
+        response_payload["next_refresh_at"] = next_refresh_at.isoformat()
         return response_payload
     return payload
 
@@ -171,7 +174,7 @@ async def get_weather(lat: float, lon: float, units: str = "metric"):
     cached_entry = weather_cache.get(cache_key)
     if cached_entry and _is_weather_cache_fresh(cached_entry["cached_at"], now):
         logger.info("Weather cache HIT for key=%s", cache_key)
-        return _build_weather_response(cached_entry["data"], cached=True)
+        return _build_weather_response(cached_entry["data"], cached=True, cached_at=cached_entry["cached_at"])
 
     # Slow path: synchronize refreshes for this cache key.
     lock = await _get_weather_lock(cache_key)
@@ -180,7 +183,7 @@ async def get_weather(lat: float, lon: float, units: str = "metric"):
         cached_entry = weather_cache.get(cache_key)
         if cached_entry and _is_weather_cache_fresh(cached_entry["cached_at"], now):
             logger.info("Weather cache HIT-after-lock for key=%s", cache_key)
-            return _build_weather_response(cached_entry["data"], cached=True)
+            return _build_weather_response(cached_entry["data"], cached=True, cached_at=cached_entry["cached_at"])
 
         logger.info("Weather cache MISS for key=%s; calling OpenWeather", cache_key)
 
@@ -198,11 +201,12 @@ async def get_weather(lat: float, lon: float, units: str = "metric"):
                 resp.raise_for_status()
                 payload = resp.json()
 
+            fetched_at = datetime.now(timezone.utc)
             weather_cache[cache_key] = {
-                "cached_at": datetime.now(timezone.utc),
+                "cached_at": fetched_at,
                 "data": payload,
             }
-            return _build_weather_response(payload, cached=False)
+            return _build_weather_response(payload, cached=False, cached_at=fetched_at)
         except httpx.RequestError as exc:
             logger.error(f"An error occurred while requesting {exc.request.url!r}: {exc}")
             raise HTTPException(status_code=503, detail=f"Weather Service Unreachable: {exc}")
