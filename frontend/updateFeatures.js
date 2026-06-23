@@ -136,13 +136,17 @@ function getWeather() {
                                 <div>${cityName}</div>
                                 <svg width="24" height="24" viewBox="0 0 24 24" style="opacity: 0.75;">
                                     <circle cx="12" cy="12" r="${r}" fill="none" stroke="currentColor" stroke-opacity="0.3" stroke-width="12"/>
-                                    <circle cx="12" cy="12" r="${r}" fill="none" stroke="currentColor" stroke-width="12"
+                                    <circle id="weather-countdown-circle" cx="12" cy="12" r="${r}" fill="none" stroke="currentColor" stroke-width="12"
                                         stroke-dasharray="${circumference.toFixed(2)}"
                                         transform="rotate(-90 12 12)"
                                         style="animation: weather-countdown ${TTL_SECONDS}s linear -${elapsedSeconds.toFixed(1)}s forwards;"/>
                                 </svg>
                             </div>
                         `;
+                        const circle = document.getElementById('weather-countdown-circle');
+                        if (circle) {
+                            circle.addEventListener('animationend', getWeather, { once: true });
+                        }
                     })
                     .catch(error => {
                         console.error('Error fetching weather data:', error);
@@ -177,4 +181,3 @@ function updateFeatures() {
 }
 
 updateFeatures();
-setInterval(getWeather, 5 * 60 * 1000); // Update weather every 5 minutes
