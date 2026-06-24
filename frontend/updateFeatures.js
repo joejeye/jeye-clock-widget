@@ -38,8 +38,10 @@ function selectIcon(iconCode) {
 
 function getWeather() {
     const weatherInfoDiv = document.getElementById('weather-info');
+    const weatherCountdownDiv = document.getElementById('weather-countdown');
     if (!showWeather) {
         weatherInfoDiv.innerHTML = '';
+        weatherCountdownDiv.innerHTML = '';
         return
     }
 
@@ -104,12 +106,6 @@ function getWeather() {
                         const nextRefreshMs = new Date(data.next_refresh_at).getTime();
                         const elapsedSeconds = Math.max(0, TTL_SECONDS - (nextRefreshMs - Date.now()) / 1000);
 
-                        if (!document.getElementById('weather-countdown-style')) {
-                            const style = document.createElement('style');
-                            style.id = 'weather-countdown-style';
-                            style.textContent = `@keyframes weather-countdown { from { stroke-dashoffset: 0; } to { stroke-dashoffset: ${circumference.toFixed(2)}; } }`;
-                            document.head.appendChild(style);
-                        }
 
                         weatherInfoDiv.innerHTML = `
                             <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
@@ -134,18 +130,22 @@ function getWeather() {
                                 </div>
                                 <div style="text-transform: capitalize;">${weatherDescription}</div>
                                 <div>${cityName}</div>
-                                <svg width="24" height="24" viewBox="0 0 24 24" style="opacity: 0.75;">
-                                    <circle cx="12" cy="12" r="${r}" fill="none" stroke="currentColor" stroke-opacity="0.3" stroke-width="12"/>
-                                    <circle id="weather-countdown-circle" cx="12" cy="12" r="${r}" fill="none" stroke="currentColor" stroke-width="12"
-                                        stroke-dasharray="${circumference.toFixed(2)}"
-                                        transform="rotate(-90 12 12)"
-                                        style="animation: weather-countdown ${TTL_SECONDS}s linear -${elapsedSeconds.toFixed(1)}s forwards;"/>
-                                </svg>
                             </div>
+                        `;
+                        weatherCountdownDiv.innerHTML = `
+                            <svg width="24" height="24" viewBox="0 0 24 24" style="opacity: 0.75;">
+                                <circle cx="12" cy="12" r="${r}" fill="none" stroke="currentColor" stroke-opacity="0.3" stroke-width="12"/>
+                                <circle id="weather-countdown-circle" cx="12" cy="12" r="${r}" fill="none" stroke="currentColor" stroke-width="12"
+                                    stroke-dasharray="${circumference.toFixed(2)}"
+                                    transform="rotate(-90 12 12)"
+                                    style="animation: weather-countdown ${TTL_SECONDS}s linear -${elapsedSeconds.toFixed(1)}s forwards;"/>
+                            </svg>
                         `;
                         const circle = document.getElementById('weather-countdown-circle');
                         if (circle) {
                             circle.addEventListener('animationend', getWeather, { once: true });
+                            circle.addEventListener('click', getWeather);
+                            circle.style.cursor = 'pointer';
                         }
                     })
                     .catch(error => {

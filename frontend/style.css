@@ -1,0 +1,8 @@
+@keyframes weather-countdown {
+    from { stroke-dashoffset: 0; }
+    to   { stroke-dashoffset: 37.70; }
+}
+
+#weather-countdown-circle:hover {
+    stroke: white;
+}
