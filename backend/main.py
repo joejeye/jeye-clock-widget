@@ -162,6 +162,32 @@ def delete_todo(todo_id: int, session: Session = Depends(get_session), username:
     session.commit()
     return {"ok": True}
 
+@app.get("/api/geocode")
+async def reverse_geocode(lat: float, lon: float):
+    url = "https://nominatim.openstreetmap.org/reverse"
+    params = {"format": "json", "lat": lat, "lon": lon}
+    headers = {"User-Agent": "jeye-clock-widget/1.0"}
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(url, params=params, headers=headers)
+            resp.raise_for_status()
+            data = resp.json()
+        address = data.get("address", {})
+        city = (
+            address.get("city") or
+            address.get("town") or
+            address.get("village") or
+            address.get("hamlet") or
+            address.get("suburb") or
+            address.get("county") or
+            ""
+        )
+        return {"city": city}
+    except Exception as exc:
+        logger.error(f"Geocode error: {exc}")
+        return {"city": ""}
+
+
 @app.get("/api/weather")
 async def get_weather(lat: float, lon: float, units: str = "metric"):
     if not API_KEY:

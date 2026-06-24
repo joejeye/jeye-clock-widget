@@ -67,21 +67,12 @@ function getWeather() {
                         return response.json();
                     });
 
-                const cityPromise = fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
+                const cityPromise = fetch(`/api/geocode?lat=${latitude}&lon=${longitude}`)
                     .then(response => {
                         if (!response.ok) return null;
                         return response.json();
                     })
-                    .then(data => {
-                        if (!data || !data.address) return '';
-                        return data.address.city || 
-                               data.address.town || 
-                               data.address.village || 
-                               data.address.hamlet ||
-                               data.address.suburb ||
-                               data.address.county || 
-                               '';
-                    })
+                    .then(data => data?.city || '')
                     .catch(error => {
                         console.error('Error fetching city name:', error);
                         return '';
@@ -144,8 +135,11 @@ function getWeather() {
                         const circle = document.getElementById('weather-countdown-circle');
                         if (circle) {
                             circle.addEventListener('animationend', getWeather, { once: true });
-                            circle.addEventListener('click', getWeather);
-                            circle.style.cursor = 'pointer';
+                        }
+                        const weatherCDDiv = document.getElementById('weather-countdown');
+                        if (weatherCDDiv) {
+                            weatherCDDiv.style.cursor = 'pointer';
+                            weatherCDDiv.addEventListener('click', getWeather);
                         }
                     })
                     .catch(error => {
