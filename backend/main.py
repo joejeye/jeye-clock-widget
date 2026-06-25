@@ -3,9 +3,10 @@ import os
 import yaml
 import secrets
 import asyncio
+import math
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone, timedelta
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 import sqlite3
 from pathlib import Path
 
@@ -45,9 +46,20 @@ ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin")
 # every 5 minutes per normalized location+unit key.
 WEATHER_CACHE_TTL_SECONDS = 5 * 60
 WEATHER_COORD_PRECISION = 3  # ~100m precision; smooths minor geolocation jitter
+WEATHER_FORCE_REFRESH_DISTANCE_KM = 2.0
 weather_cache: Dict[Tuple[float, float, str], Dict[str, Any]] = {}
 weather_cache_locks: Dict[Tuple[float, float, str], asyncio.Lock] = {}
 weather_cache_guard = asyncio.Lock()
+weather_last_position: Optional[Tuple[float, float]] = None
+
+# Reverse geocode caching / upstream request throttling.
+REVERSE_GEOCODE_CACHE_TTL_SECONDS = 60
+REVERSE_GEOCODE_COORD_PRECISION = 3  # keep aligned with weather precision
+REVERSE_GEOCODE_FORCE_REFRESH_DISTANCE_KM = 2.0
+reverse_geocode_cache: Dict[Tuple[float, float], Dict[str, Any]] = {}
+reverse_geocode_cache_locks: Dict[Tuple[float, float], asyncio.Lock] = {}
+reverse_geocode_cache_guard = asyncio.Lock()
+reverse_geocode_last_position: Optional[Tuple[float, float]] = None
 
 security = HTTPBasic()
 
@@ -61,12 +73,55 @@ def _is_weather_cache_fresh(cached_at: datetime, now: datetime) -> bool:
     return age_seconds < WEATHER_CACHE_TTL_SECONDS
 
 
+def _normalize_reverse_geocode_key(lat: float, lon: float) -> Tuple[float, float]:
+    return (round(lat, REVERSE_GEOCODE_COORD_PRECISION), round(lon, REVERSE_GEOCODE_COORD_PRECISION))
+
+
+def _is_reverse_geocode_cache_fresh(cached_at: datetime, now: datetime) -> bool:
+    age_seconds = (now - cached_at).total_seconds()
+    return age_seconds < REVERSE_GEOCODE_CACHE_TTL_SECONDS
+
+
+def _distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    earth_radius_km = 6371.0
+    d_lat = math.radians(lat2 - lat1)
+    d_lon = math.radians(lon2 - lon1)
+    a = (
+        math.sin(d_lat / 2) ** 2
+        + math.cos(math.radians(lat1))
+        * math.cos(math.radians(lat2))
+        * math.sin(d_lon / 2) ** 2
+    )
+    return 2 * earth_radius_km * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
+def _should_force_location_refresh(
+    lat: float,
+    lon: float,
+    last_position: Optional[Tuple[float, float]],
+    threshold_km: float,
+) -> bool:
+    if last_position is None:
+        return False
+    distance = _distance_km(lat, lon, last_position[0], last_position[1])
+    return distance > threshold_km
+
+
 async def _get_weather_lock(cache_key: Tuple[float, float, str]) -> asyncio.Lock:
     async with weather_cache_guard:
         lock = weather_cache_locks.get(cache_key)
         if lock is None:
             lock = asyncio.Lock()
             weather_cache_locks[cache_key] = lock
+        return lock
+
+
+async def _get_reverse_geocode_lock(cache_key: Tuple[float, float]) -> asyncio.Lock:
+    async with reverse_geocode_cache_guard:
+        lock = reverse_geocode_cache_locks.get(cache_key)
+        if lock is None:
+            lock = asyncio.Lock()
+            reverse_geocode_cache_locks[cache_key] = lock
         return lock
 
 
@@ -164,51 +219,105 @@ def delete_todo(todo_id: int, session: Session = Depends(get_session), username:
 
 @app.get("/api/geocode")
 async def reverse_geocode(lat: float, lon: float):
-    url = "https://nominatim.openstreetmap.org/reverse"
-    params = {"format": "json", "lat": lat, "lon": lon}
-    headers = {"User-Agent": "jeye-clock-widget/1.0"}
-    try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(url, params=params, headers=headers)
-            resp.raise_for_status()
-            data = resp.json()
-        address = data.get("address", {})
-        city = (
-            address.get("city") or
-            address.get("town") or
-            address.get("village") or
-            address.get("hamlet") or
-            address.get("suburb") or
-            address.get("county") or
-            ""
+    global reverse_geocode_last_position
+
+    cache_key = _normalize_reverse_geocode_key(lat, lon)
+    now = datetime.now(timezone.utc)
+    force_refresh = _should_force_location_refresh(
+        lat, lon, reverse_geocode_last_position, REVERSE_GEOCODE_FORCE_REFRESH_DISTANCE_KM
+    )
+
+    cached_entry = reverse_geocode_cache.get(cache_key)
+    if not force_refresh and cached_entry and _is_reverse_geocode_cache_fresh(cached_entry["cached_at"], now):
+        logger.info("Reverse geocode cache HIT for key=%s", cache_key)
+        reverse_geocode_last_position = (lat, lon)
+        return {"city": cached_entry["city"]}
+
+    if force_refresh:
+        logger.info(
+            "Reverse geocode force refresh: moved > %.1f km from last position",
+            REVERSE_GEOCODE_FORCE_REFRESH_DISTANCE_KM,
         )
-        return {"city": city}
-    except Exception as exc:
-        logger.error(f"Geocode error: {exc}")
-        return {"city": ""}
+
+    lock = await _get_reverse_geocode_lock(cache_key)
+    async with lock:
+        now = datetime.now(timezone.utc)
+        force_refresh = _should_force_location_refresh(
+            lat, lon, reverse_geocode_last_position, REVERSE_GEOCODE_FORCE_REFRESH_DISTANCE_KM
+        )
+        cached_entry = reverse_geocode_cache.get(cache_key)
+        if not force_refresh and cached_entry and _is_reverse_geocode_cache_fresh(cached_entry["cached_at"], now):
+            logger.info("Reverse geocode cache HIT-after-lock for key=%s", cache_key)
+            reverse_geocode_last_position = (lat, lon)
+            return {"city": cached_entry["city"]}
+
+        logger.info("Reverse geocode cache MISS for key=%s; calling Nominatim", cache_key)
+        url = "https://nominatim.openstreetmap.org/reverse"
+        params = {"format": "json", "lat": lat, "lon": lon}
+        headers = {"User-Agent": "jeye-clock-widget/1.0"}
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(url, params=params, headers=headers)
+                resp.raise_for_status()
+                data = resp.json()
+            address = data.get("address", {})
+            city = (
+                address.get("city") or
+                address.get("town") or
+                address.get("village") or
+                address.get("hamlet") or
+                address.get("suburb") or
+                address.get("county") or
+                ""
+            )
+            reverse_geocode_cache[cache_key] = {
+                "cached_at": datetime.now(timezone.utc),
+                "city": city,
+            }
+            reverse_geocode_last_position = (lat, lon)
+            return {"city": city}
+        except Exception as exc:
+            logger.error(f"Geocode error: {exc}")
+            return {"city": ""}
 
 
 @app.get("/api/weather")
 async def get_weather(lat: float, lon: float, units: str = "metric"):
+    global weather_last_position
+
     if not API_KEY:
         raise HTTPException(status_code=500, detail="API Key not configured")
 
     cache_key = _normalize_weather_key(lat, lon, units)
     now = datetime.now(timezone.utc)
+    force_refresh = _should_force_location_refresh(
+        lat, lon, weather_last_position, WEATHER_FORCE_REFRESH_DISTANCE_KM
+    )
 
     # Fast path: return fresh cache without waiting for a lock.
     cached_entry = weather_cache.get(cache_key)
-    if cached_entry and _is_weather_cache_fresh(cached_entry["cached_at"], now):
+    if not force_refresh and cached_entry and _is_weather_cache_fresh(cached_entry["cached_at"], now):
         logger.info("Weather cache HIT for key=%s", cache_key)
+        weather_last_position = (lat, lon)
         return _build_weather_response(cached_entry["data"], cached=True, cached_at=cached_entry["cached_at"])
+
+    if force_refresh:
+        logger.info(
+            "Weather force refresh: moved > %.1f km from last position",
+            WEATHER_FORCE_REFRESH_DISTANCE_KM,
+        )
 
     # Slow path: synchronize refreshes for this cache key.
     lock = await _get_weather_lock(cache_key)
     async with lock:
         now = datetime.now(timezone.utc)
+        force_refresh = _should_force_location_refresh(
+            lat, lon, weather_last_position, WEATHER_FORCE_REFRESH_DISTANCE_KM
+        )
         cached_entry = weather_cache.get(cache_key)
-        if cached_entry and _is_weather_cache_fresh(cached_entry["cached_at"], now):
+        if not force_refresh and cached_entry and _is_weather_cache_fresh(cached_entry["cached_at"], now):
             logger.info("Weather cache HIT-after-lock for key=%s", cache_key)
+            weather_last_position = (lat, lon)
             return _build_weather_response(cached_entry["data"], cached=True, cached_at=cached_entry["cached_at"])
 
         logger.info("Weather cache MISS for key=%s; calling OpenWeather", cache_key)
@@ -232,6 +341,7 @@ async def get_weather(lat: float, lon: float, units: str = "metric"):
                 "cached_at": fetched_at,
                 "data": payload,
             }
+            weather_last_position = (lat, lon)
             return _build_weather_response(payload, cached=False, cached_at=fetched_at)
         except httpx.RequestError as exc:
             logger.error(f"An error occurred while requesting {exc.request.url!r}: {exc}")
