@@ -60,6 +60,14 @@ flowchart TD
 *   **File:** `backend/database.db` (Persistent Volume).
 *   **Data:** Stores Todo items including text, completion status, archive status, and metadata (due dates).
 
+### 4. Application Logging
+*   **Technology:** Python `logging`, SQLite (WAL mode).
+*   **File:** `backend/logging_setup.py`.
+*   **Design:** Non-blocking — log records are enqueued via `NonBlockingQueueHandler` (never blocks request threads; drops with a stderr warning when the queue is full) and written to SQLite by a background `QueueListener` thread using `SQLiteBatchHandler` (batches of 50, flushed every 1 s).
+*   **Storage:** A separate `logs.db` file (path set by `LOG_DB_PATH` env var, default `logs.db`). Schema: `app_logs` table with timestamp, level, logger name, event tag, message, request ID, HTTP method/path/status/latency, source location, exception text, and arbitrary `context_json`.
+*   **Request context:** A FastAPI middleware (`request_logging_middleware`) injects a UUID request ID plus method/path into Python `contextvars` so every log record emitted during a request is tagged automatically.
+*   **Indexes:** `ts_unix_ms`, `level`, `event`, `request_id`, `(path, ts_unix_ms)`, `(status_code, ts_unix_ms)` for fast querying.
+
 # Deployment
 
 This project can be run locally (with or without Docker) or deployed to the cloud using Google Kubernetes Engine (GKE).
@@ -230,6 +238,9 @@ Run one of the following scripts to automatically build, push, and redeploy:
 
 *   **API Key:** Managed in `backend/.env`. This file is git-ignored for security.
 *   **Server Port:** Managed in `backend/config.yaml`.
+*   **Logging:** Configured via environment variables:
+    *   `LOG_DB_PATH` — path for the SQLite log database (default: `logs.db`).
+    *   `LOG_LEVEL` — minimum log level (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`; default: `INFO`).
 
 # Development Conventions
 
