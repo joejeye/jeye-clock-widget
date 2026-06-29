@@ -4,6 +4,8 @@ import yaml
 import secrets
 import asyncio
 import math
+from time import perf_counter
+from uuid import uuid4
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any, Tuple, Optional
@@ -21,13 +23,21 @@ from dotenv import load_dotenv
 
 from models import Todo
 from database import create_db_and_tables, get_session
+from logging_setup import (
+    LoggingRuntime,
+    set_request_context,
+    reset_request_context,
+    setup_sqlite_queue_logging,
+    shutdown_sqlite_queue_logging,
+)
 
 # Load env
 load_dotenv()
 
-# Logging
+# Logging (stdout remains active for Docker logs).
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+logging_runtime: Optional[LoggingRuntime] = None
 
 # Load config
 try:
@@ -162,8 +172,29 @@ def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global logging_runtime
+
+    log_db_path = os.getenv("LOG_DB_PATH", "logs.db")
+    log_level = os.getenv("LOG_LEVEL", "INFO")
+    logging_runtime = setup_sqlite_queue_logging(
+        db_path=log_db_path,
+        level=log_level,
+    )
+    logger.info(
+        "SQLite log sink initialized",
+        extra={
+            "event": "logging_initialized",
+            "context": {"db_path": log_db_path, "level": log_level},
+        },
+    )
+
     create_db_and_tables()
-    yield
+    try:
+        yield
+    finally:
+        logger.info("Shutting down SQLite log sink", extra={"event": "logging_shutdown"})
+        shutdown_sqlite_queue_logging(logging_runtime)
+        logging_runtime = None
 
 app = FastAPI(lifespan=lifespan)
 
@@ -174,6 +205,40 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def request_logging_middleware(request, call_next):
+    request_id = request.headers.get("X-Request-ID", str(uuid4()))
+    tokens = set_request_context(request_id, request.method, request.url.path)
+    start = perf_counter()
+
+    try:
+        response = await call_next(request)
+        latency_ms = int((perf_counter() - start) * 1000)
+        response.headers["X-Request-ID"] = request_id
+        logger.info(
+            "HTTP request completed",
+            extra={
+                "event": "http_request_completed",
+                "status_code": response.status_code,
+                "latency_ms": latency_ms,
+            },
+        )
+        return response
+    except Exception:
+        latency_ms = int((perf_counter() - start) * 1000)
+        logger.exception(
+            "HTTP request raised unhandled exception",
+            extra={
+                "event": "http_request_exception",
+                "status_code": 500,
+                "latency_ms": latency_ms,
+            },
+        )
+        raise
+    finally:
+        reset_request_context(tokens)
 
 # API Routes
 @app.get("/api/todos", response_model=List[Todo])
@@ -229,14 +294,22 @@ async def reverse_geocode(lat: float, lon: float):
 
     cached_entry = reverse_geocode_cache.get(cache_key)
     if not force_refresh and cached_entry and _is_reverse_geocode_cache_fresh(cached_entry["cached_at"], now):
-        logger.info("Reverse geocode cache HIT for key=%s", cache_key)
+        logger.info(
+            "Reverse geocode cache HIT",
+            extra={"event": "geocode_cache_hit", "context": {"cache_key": cache_key}},
+        )
         reverse_geocode_last_position = (lat, lon)
         return {"city": cached_entry["city"]}
 
     if force_refresh:
         logger.info(
-            "Reverse geocode force refresh: moved > %.1f km from last position",
-            REVERSE_GEOCODE_FORCE_REFRESH_DISTANCE_KM,
+            "Reverse geocode force refresh",
+            extra={
+                "event": "geocode_force_refresh",
+                "context": {
+                    "threshold_km": REVERSE_GEOCODE_FORCE_REFRESH_DISTANCE_KM,
+                },
+            },
         )
 
     lock = await _get_reverse_geocode_lock(cache_key)
@@ -247,11 +320,20 @@ async def reverse_geocode(lat: float, lon: float):
         )
         cached_entry = reverse_geocode_cache.get(cache_key)
         if not force_refresh and cached_entry and _is_reverse_geocode_cache_fresh(cached_entry["cached_at"], now):
-            logger.info("Reverse geocode cache HIT-after-lock for key=%s", cache_key)
+            logger.info(
+                "Reverse geocode cache HIT-after-lock",
+                extra={
+                    "event": "geocode_cache_hit_after_lock",
+                    "context": {"cache_key": cache_key},
+                },
+            )
             reverse_geocode_last_position = (lat, lon)
             return {"city": cached_entry["city"]}
 
-        logger.info("Reverse geocode cache MISS for key=%s; calling Nominatim", cache_key)
+        logger.info(
+            "Reverse geocode cache MISS; calling Nominatim",
+            extra={"event": "geocode_cache_miss", "context": {"cache_key": cache_key}},
+        )
         url = "https://nominatim.openstreetmap.org/reverse"
         params = {"format": "json", "lat": lat, "lon": lon}
         headers = {"User-Agent": "jeye-clock-widget/1.0"}
@@ -277,7 +359,10 @@ async def reverse_geocode(lat: float, lon: float):
             reverse_geocode_last_position = (lat, lon)
             return {"city": city}
         except Exception as exc:
-            logger.error(f"Geocode error: {exc}")
+            logger.error(
+                f"Geocode error: {exc}",
+                extra={"event": "geocode_upstream_error", "context": {"error": str(exc)}},
+            )
             return {"city": ""}
 
 
@@ -297,14 +382,20 @@ async def get_weather(lat: float, lon: float, units: str = "metric"):
     # Fast path: return fresh cache without waiting for a lock.
     cached_entry = weather_cache.get(cache_key)
     if not force_refresh and cached_entry and _is_weather_cache_fresh(cached_entry["cached_at"], now):
-        logger.info("Weather cache HIT for key=%s", cache_key)
+        logger.info(
+            "Weather cache HIT",
+            extra={"event": "weather_cache_hit", "context": {"cache_key": cache_key}},
+        )
         weather_last_position = (lat, lon)
         return _build_weather_response(cached_entry["data"], cached=True, cached_at=cached_entry["cached_at"])
 
     if force_refresh:
         logger.info(
-            "Weather force refresh: moved > %.1f km from last position",
-            WEATHER_FORCE_REFRESH_DISTANCE_KM,
+            "Weather force refresh",
+            extra={
+                "event": "weather_force_refresh",
+                "context": {"threshold_km": WEATHER_FORCE_REFRESH_DISTANCE_KM},
+            },
         )
 
     # Slow path: synchronize refreshes for this cache key.
@@ -316,11 +407,20 @@ async def get_weather(lat: float, lon: float, units: str = "metric"):
         )
         cached_entry = weather_cache.get(cache_key)
         if not force_refresh and cached_entry and _is_weather_cache_fresh(cached_entry["cached_at"], now):
-            logger.info("Weather cache HIT-after-lock for key=%s", cache_key)
+            logger.info(
+                "Weather cache HIT-after-lock",
+                extra={
+                    "event": "weather_cache_hit_after_lock",
+                    "context": {"cache_key": cache_key},
+                },
+            )
             weather_last_position = (lat, lon)
             return _build_weather_response(cached_entry["data"], cached=True, cached_at=cached_entry["cached_at"])
 
-        logger.info("Weather cache MISS for key=%s; calling OpenWeather", cache_key)
+        logger.info(
+            "Weather cache MISS; calling OpenWeather",
+            extra={"event": "weather_cache_miss", "context": {"cache_key": cache_key}},
+        )
 
         url = "https://api.openweathermap.org/data/4.0/onecall/current"
         params = {
@@ -344,10 +444,25 @@ async def get_weather(lat: float, lon: float, units: str = "metric"):
             weather_last_position = (lat, lon)
             return _build_weather_response(payload, cached=False, cached_at=fetched_at)
         except httpx.RequestError as exc:
-            logger.error(f"An error occurred while requesting {exc.request.url!r}: {exc}")
+            logger.error(
+                f"An error occurred while requesting {exc.request.url!r}: {exc}",
+                extra={
+                    "event": "weather_upstream_unreachable",
+                    "context": {"error": str(exc), "url": str(exc.request.url)},
+                },
+            )
             raise HTTPException(status_code=503, detail=f"Weather Service Unreachable: {exc}")
         except httpx.HTTPStatusError as exc:
-            logger.error(f"Error response {exc.response.status_code} while requesting {exc.request.url!r}")
+            logger.error(
+                f"Error response {exc.response.status_code} while requesting {exc.request.url!r}",
+                extra={
+                    "event": "weather_upstream_http_error",
+                    "context": {
+                        "status_code": exc.response.status_code,
+                        "url": str(exc.request.url),
+                    },
+                },
+            )
             raise HTTPException(status_code=exc.response.status_code, detail="Weather API Error")
 
 class SQLQuery(BaseModel):
@@ -376,7 +491,10 @@ def execute_readonly_query(sql_query: SQLQuery, username: str = Depends(get_curr
     except sqlite3.OperationalError as e:
         raise HTTPException(status_code=400, detail=f"Database error: {e}")
     except Exception as e:
-        logger.error(f"Query execution failed: {e}")
+        logger.error(
+            f"Query execution failed: {e}",
+            extra={"event": "query_execution_failed", "context": {"error": str(e)}},
+        )
         raise HTTPException(status_code=400, detail=str(e))
 
 # Mount static files
